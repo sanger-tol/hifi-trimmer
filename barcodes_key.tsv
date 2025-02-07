@@ -1,0 +1,6 @@
+regexp
+NGB00972
+NGB00973
+PacBio_ULI_adapter
+bcA
+bc[^A]
