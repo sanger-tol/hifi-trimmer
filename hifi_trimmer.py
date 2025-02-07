@@ -22,8 +22,8 @@ def cli():
     pass
 
 @click.command("process_blast")
-@click.argument('blastout', type=Click.file('r'))
-@click.argument('adapter_key', type=Click.file('r'))
+@click.argument('blastout', type=click.file('r'))
+@click.argument('adapter_key', type=click.file('r'))
 @click.argument('bam', default=None, required=False)
 def process_blast(blastout, adapter_key, lengths):
     """Processes the input blastout file according to the adapter key"""
