@@ -1,5 +1,5 @@
 import click
-from Bio import bgzf
+import bgzip
 from pathlib import Path
 import polars as pl
 import polars.selectors as cs
@@ -326,34 +326,35 @@ def filter_bam_to_fasta(bed, bam, outfile):
 
     ## read BED as dictionary
     filters = csv.DictReader(open(bed, "r"), delimiter="\t", fieldnames=["read", "start", "end", "reason"])
-    with bgzf.open(outfile, "wb") as out:
-        with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
-            
-            ## initialise first BED record
-            r = next(filters, None)
-            ## Process: for each read in the BAM, check if it matches the current BED record.
-            ## If yes, pull BED records until we reach a record for the next read.
-            ## Then trim the sequence using the records pulled and write to fasta.
-            ## If not, write record straight to disk
-            for read in b.fetch(until_eof=True):
-                if r is not None and r["read"] == read.query_name:
-                    ranges = [(int(r["start"]), int(r["end"]))]
+    with open(outfile, "wb") as raw:
+        with bgzip.BGZipWriter(raw) as out:
+            with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
+                
+                ## initialise first BED record
+                r = next(filters, None)
+                ## Process: for each read in the BAM, check if it matches the current BED record.
+                ## If yes, pull BED records until we reach a record for the next read.
+                ## Then trim the sequence using the records pulled and write to fasta.
+                ## If not, write record straight to disk
+                for read in b.fetch(until_eof=True):
+                    if r is not None and r["read"] == read.query_name:
+                        ranges = [(int(r["start"]), int(r["end"]))]
 
-                    while True:
-                        r = next(filters, None)
-                        if r is None or r["read"] != read.query_name:
-                            break
-                        ranges.append((int(r["start"]), int(r["end"])))
+                        while True:
+                            r = next(filters, None)
+                            if r is None or r["read"] != read.query_name:
+                                break
+                            ranges.append((int(r["start"]), int(r["end"])))
 
-                    sequence = trim_positions(read.query_sequence, ranges)
-                    click.echo(f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}")
-                    if len(sequence) > 0:
-                        out.write(format_fasta_record(read.query_name, sequence))
-                else:
-                    out.write(format_fasta_record(read.query_name, read.query_sequence))
+                        sequence = trim_positions(read.query_sequence, ranges)
+                        click.echo(f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}")
+                        if len(sequence) > 0:
+                            out.write(format_fasta_record(read.query_name, sequence))
+                    else:
+                        out.write(format_fasta_record(read.query_name, read.query_sequence))
 
-            if not iter_exhausted(filters):
-                sys.exit("WARNING: not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?")
+    if not iter_exhausted(filters):
+        sys.exit("WARNING: not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?")
 
 cli.add_command(blastout_to_bed)
 cli.add_command(filter_bam_to_fasta)
