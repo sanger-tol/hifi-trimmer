@@ -329,7 +329,6 @@ def filter_bam_to_fasta(bed, bam, outfile):
     with open(outfile, "wb") as raw:
         with bgzip.BGZipWriter(raw) as out:
             with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
-                
                 ## initialise first BED record
                 r = next(filters, None)
                 ## Process: for each read in the BAM, check if it matches the current BED record.
@@ -349,9 +348,9 @@ def filter_bam_to_fasta(bed, bam, outfile):
                         sequence = trim_positions(read.query_sequence, ranges)
                         click.echo(f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}")
                         if len(sequence) > 0:
-                            out.write(format_fasta_record(read.query_name, sequence))
+                            out.write(format_fasta_record(read.query_name, sequence).encode("utf-8"))
                     else:
-                        out.write(format_fasta_record(read.query_name, read.query_sequence))
+                        out.write(format_fasta_record(read.query_name, read.query_sequence).encode("utf-8"))
 
     if not iter_exhausted(filters):
         sys.exit("WARNING: not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?")
