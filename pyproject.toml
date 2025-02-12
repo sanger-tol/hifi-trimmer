@@ -8,7 +8,6 @@ dependencies = [
     "biopython>=1.85",
     "click>=8.1.8",
     "polars>=1.21.0",
-    "pybedtools>=0.11.0",
     "pysam>=0.23.0",
     "pyyaml>=6.0.2",
 ]

@@ -8,7 +8,6 @@ import re
 import sys
 import csv
 import yaml
-import pdb
 
 def read_adapter_yaml(yaml_path: str) -> pl.DataFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
