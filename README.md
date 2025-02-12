@@ -8,7 +8,7 @@ cd hifi-trimmer
 pip install .
 ```
 
-## Usage:
+## Usage
 
 ```
 $ uv run hifi_trimmer blastout_to_bed --help
