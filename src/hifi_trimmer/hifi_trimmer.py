@@ -259,13 +259,14 @@ def cli():
 @click.command("blastout_to_bed")
 @click.argument('blastout', type=click.Path(exists=True))
 @click.argument('adapter_yaml', type=click.Path(exists=True))
+@click.argument('outfile', type=click.Path(exists=True))
 @click.option('--bam', default=None, required=False, type=click.Path(exists=True), 
     help="If blastout file has no read length field, a BAM file of reads to get read lengths")
 @click.option("--min_length_after_trimming", default=300, type=int,
     help="Minumum length of a read after trimming the ends in order not to be discarded.")
 @click.option("--end_length", default=150, type=int,
     help = "Window size at either end of the read to be considered as 'ends' for searching.")
-def blastout_to_bed(blastout, adapter_yaml, bam, min_length_after_trimming, end_length):
+def blastout_to_bed(blastout, adapter_yaml, outfile, bam, min_length_after_trimming, end_length):
     """Processes the input blastout file according to the adapter yaml key.
     
     BLASTOUT: tabular file resulting from BLAST with -outfmt "6 std qlen". If the qlen column
@@ -310,11 +311,9 @@ def blastout_to_bed(blastout, adapter_yaml, bam, min_length_after_trimming, end_
         .join(original_order, on="qseqid", how="left", maintain_order="left")
         .sort("index")
         .drop("index")
-        .collect()
     )
 
-    ## Print to stdout
-    click.echo(bed_sorted.write_csv(separator="\t", include_header=False))
+    bed_sorted.sink_csv(outfile, separator="\t", include_header=False)
 
 @click.command("filter_bam_to_fasta")
 @click.argument('bed', type=click.Path(exists=True))
