@@ -109,7 +109,7 @@ def trim_positions(seq, ranges):
     for start, end in ranges:
         seq = seq[:start] + seq[end:]
     
-    return s
+    return seq
 
 def match_hits(blastout: pl.DataFrame, adapter_df: str, end_length: int) -> pl.DataFrame:
     """Determine whether each blast hit matches sufficient criteria for discard/trimming
