@@ -9,7 +9,7 @@ import sys
 import csv
 import yaml
 
-def read_adapter_yaml(yaml_path: str) -> pl.DataFrame:
+def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
     with open(yaml_path) as stream:
         try:
