@@ -259,7 +259,7 @@ def cli():
 @click.command("blastout_to_bed")
 @click.argument('blastout', type=click.Path(exists=True))
 @click.argument('adapter_yaml', type=click.Path(exists=True))
-@click.argument('outfile', type=click.Path(exists=True))
+@click.argument('outfile', type=click.Path(exists=False))
 @click.option('--bam', default=None, required=False, type=click.Path(exists=True), 
     help="If blastout file has no read length field, a BAM file of reads to get read lengths")
 @click.option("--min_length_after_trimming", default=300, type=int,
