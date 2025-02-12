@@ -300,13 +300,21 @@ def blastout_to_bed(blastout, adapter_yaml, bam, min_length_after_trimming, end_
     
     ## process the blastout file
     hits = match_hits(blast, adapters, end_length)
-    bed = (create_bed(hits, end_length, min_length_after_trimming)
-        .sort(by=[pl.col("qseqid").str.extract(r"/(\d+)/").cast(pl.Int64), "start"])
+    bed = (create_bed(hits, end_length, min_length_after_trimming))
+    original_order = (blast
+        .select(pl.col("qseqid"))
+        .unique(maintain_order=True)
+        .with_row_index()
+    )
+    bed_sorted = (bed
+        .join(original_order, on="qseqid", how="left", by="qseqid", maintain_order="left")
+        .sort("index")
+        .drop("index")
         .collect()
     )
 
     ## Print to stdout
-    click.echo(bed.write_csv(separator="\t", include_header=False))
+    click.echo(bed_sorted.write_csv(separator="\t", include_header=False))
 
 @click.command("filter_bam_to_fasta")
 @click.argument('bed', type=click.Path(exists=True))
