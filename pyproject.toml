@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "biopython>=1.85",
     "click>=8.1.8",
     "polars>=1.21.0",
     "pybedtools>=0.11.0",
