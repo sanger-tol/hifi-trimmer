@@ -307,7 +307,7 @@ def blastout_to_bed(blastout, adapter_yaml, bam, min_length_after_trimming, end_
         .with_row_index()
     )
     bed_sorted = (bed
-        .join(original_order, on="qseqid", how="left", by="qseqid", maintain_order="left")
+        .join(original_order, on="qseqid", how="left", maintain_order="left")
         .sort("index")
         .drop("index")
         .collect()
