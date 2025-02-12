@@ -352,7 +352,7 @@ def filter_bam_to_fasta(bed, bam, outfile):
                 else:
                     out.write(format_fasta_record(read.query_name, read.query_sequence))
 
-            if dict_exhausted(filters):
+            if not iter_exhausted(filters):
                 sys.exit("WARNING: not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?")
 
 cli.add_command(blastout_to_bed)
