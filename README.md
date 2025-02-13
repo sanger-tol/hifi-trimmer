@@ -68,12 +68,12 @@ Then, create a YAML file describing what to do with each adapter hit:
 ```
 - adapter: "NGB00972"
   discard_middle: True // Discard read if hit found in middle of read
-  discard_end: False // Discard read if hit found in end of read
-  trim_end: True // Trim read if hit found at end of read and read not otherwise discarded
-  middle_pident: 95 // Minimum hit percent identity for match in middle
-  middle_length: 44 // Minimum hit length for match in middle
-  end_pident: 90 // Minimum hit percent identity for match at end
-  end_length: 18  // Minimum hit length for match at end
+  discard_end: False   // Discard read if hit found in end of read
+  trim_end: True       // Trim read if hit found at end of read and read not otherwise discarded
+  middle_pident: 95    // Minimum hit percent identity for match in middle
+  middle_length: 44    // Minimum hit length for match in middle
+  end_pident: 90       // Minimum hit percent identity for match at end
+  end_length: 18       // Minimum hit length for match at end
 - adapter: "NGB00973"
   discard_middle: True
   discard_end: False

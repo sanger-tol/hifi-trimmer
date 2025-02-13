@@ -20,8 +20,14 @@ def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
 
 
 def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
-    ## Read BLAST as lazy DataFrame - will only be streamed from file after
-    ## .collect() called
+    """Read BLAST outformat file to a LazyFrame. 
+    
+    If a BAM file is provided and there is no 13th column (containing read lengths)
+    then these can be quickly counted.
+
+    Returns with the columns qseqid, sseqid, pident, length, qstart, qend, and evalue.
+    qstart and qend are sorted to ignore information about strand.
+    """
     blastout = pl.scan_csv(blast_path, has_header=False, separator="\t")
 
     ## if read lengths not provided but bam is - get them from the bam
@@ -114,14 +120,9 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
             blast.select(pl.col("sseqid"))
             .unique()
             .join(adapters, how="cross")
-            .filter(
-                pl.struct(["sseqid", "adapter"]).map_elements(
-                    lambda s: bool(re.search(s["adapter"], s["sseqid"])),
-                    return_dtype=pl.Boolean,
-                )
-            )
+            .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
             .group_by("sseqid")
-            .agg(n=pl.col("sseqid").n_unique())
+            .agg(n = pl.col("sseqid").n_unique())
         )
         .collect()["n"]
         .to_list()
@@ -317,6 +318,7 @@ def determine_actions(
     return result
 
 def create_bed(blastout: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
+    """Format the output from determine_actions() into valid BED."""
     return blastout.select(
         qseqid=pl.col("qseqid"),
         start=pl.when((pl.col("action") == "discard") | (pl.col("action") == "trim_l"))
@@ -337,7 +339,6 @@ def create_bed(blastout: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
 def cli():
     """Main entry point for the tool."""
     pass
-
 
 @click.command("blastout_to_bed")
 @click.argument("blastout", type=click.Path(exists=True))
@@ -375,6 +376,7 @@ def blastout_to_bed(
 
     BLASTOUT: tabular file resulting from BLAST with -outfmt "6 std qlen". If the qlen column
     is missing, lengths can be calculated by passing the --bam option.
+    
     ADAPTER_YAML: yaml file contaning a list with the following fields per adapters:
         - name: name of adapter. can be a regular expression
           discard_middle: True/False - discard read if adapter found in middle
