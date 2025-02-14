@@ -8,6 +8,7 @@ import sys
 import csv
 import yaml
 
+
 def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
     with open(yaml_path) as stream:
@@ -20,8 +21,8 @@ def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
 
 
 def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
-    """Read BLAST outformat file to a LazyFrame. 
-    
+    """Read BLAST outformat file to a LazyFrame.
+
     If a BAM file is provided and there is no 13th column (containing read lengths)
     then these can be quickly counted.
 
@@ -121,7 +122,7 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
             .unique()
             .join_where(adapters, pl.col("sseqid").str.contains(pl.col("adapter")))
             .group_by("sseqid")
-            .agg(n = pl.col("sseqid").n_unique())
+            .agg(n=pl.col("sseqid").n_unique())
         )
         .collect()["n"]
         .to_list()
@@ -212,6 +213,7 @@ def match_hits(
 
     return blastout
 
+
 def determine_actions(
     blastout: pl.LazyFrame, end_length: int, min_length: int
 ) -> pl.LazyFrame:
@@ -226,7 +228,7 @@ def determine_actions(
 
     def filter_get_max(getcol, maxcol, cond) -> pl.Expr:
         return getcol.filter(cond).get(maxcol.filter(cond).arg_max())
-    
+
     def filter_get_min(getcol, maxcol, cond) -> pl.Expr:
         return getcol.filter(cond).get(maxcol.filter(cond).arg_min())
 
@@ -259,59 +261,63 @@ def determine_actions(
             .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
             .then(pl.lit(["trim_r"]))
             .otherwise(pl.lit(["no_reason"])),
-            reason=pl.when(pl.col("discard").any())
-            .then(pl.concat_list(pl.col("sseqid").get(pl.col("evalue").arg_max())))
+            cols=pl.when(pl.col("discard").any())
+            .then(
+                pl.concat_list(
+                    pl.struct(["sseqid", "qstart", "qend"]).get(
+                        pl.col("evalue").arg_max()
+                    )
+                )
+            )
             .when(pl.col("trim_l").any() & pl.col("trim_r").any())
             .then(
                 pl.concat_list(
-                    filter_get_min(pl.col("sseqid"), pl.col("evalue"), pl.col("qend") <= end_length).implode(),
-                    filter_get_min(pl.col("sseqid"), pl.col("evalue"), pl.col("qstart") >= pl.col("read_length") - end_length).implode()
+                    filter_get_min(
+                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.col("evalue"),
+                        pl.col("qend") <= end_length,
+                    ).implode(),
+                    filter_get_min(
+                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.col("evalue"),
+                        pl.col("qstart") >= pl.col("read_length") - end_length,
+                    ).implode(),
                 )
             )
             .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
-            .then(pl.concat_list(filter_get_min(pl.col("sseqid"), pl.col("evalue"), pl.col("qend") <= end_length)))
-            .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(
-               pl.concat_list(filter_get_min(pl.col("sseqid"), pl.col("evalue"), pl.col("qstart") >= (pl.col("read_length") - end_length)))
-            )
-            .otherwise(pl.lit(["none"])).explode(),
-            qstart=pl.when(pl.col("discard").any())
-            .then(pl.concat_list(pl.col("qstart").get(pl.col("evalue").arg_max())))
-            .when(pl.col("trim_l").any() & pl.col("trim_r").any())
             .then(
                 pl.concat_list(
-                    filter_get_min(pl.col("qstart"), pl.col("evalue"), pl.col("qend") <= end_length).implode(),
-                    filter_get_min(pl.col("qstart"), pl.col("evalue"), pl.col("qstart") >= pl.col("read_length") - end_length).implode()
+                    filter_get_min(
+                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.col("evalue"),
+                        pl.col("qend") <= end_length,
+                    )
                 )
             )
-            .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
-            .then(pl.concat_list(filter_get_min(pl.col("qstart"), pl.col("evalue"), pl.col("qend") <= end_length)))
             .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(
-               pl.concat_list(filter_get_min(pl.col("qstart"), pl.col("evalue"), pl.col("qstart") >= (pl.col("read_length") - end_length)))
-            )
-            .otherwise(pl.lit([0])).explode(),
-            qend=pl.when(pl.col("discard").any())
-            .then(pl.concat_list(pl.col("qend").get(pl.col("evalue").arg_max())))
-            .when(pl.col("trim_l").any() & pl.col("trim_r").any())
             .then(
                 pl.concat_list(
-                    filter_get_min(pl.col("qend"), pl.col("evalue"), pl.col("qend") <= end_length).implode(),
-                    filter_get_min(pl.col("qend"), pl.col("evalue"), pl.col("qstart") >= pl.col("read_length") - end_length).implode()
+                    filter_get_min(
+                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.col("evalue"),
+                        pl.col("qstart") >= (pl.col("read_length") - end_length),
+                    )
                 )
             )
-            .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
-            .then(pl.concat_list(filter_get_min(pl.col("qend"), pl.col("evalue"), pl.col("qend") <= end_length)))
-            .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(
-               pl.concat_list(filter_get_min(pl.col("qend"), pl.col("evalue"), pl.col("qstart") >= (pl.col("read_length") - end_length)))
+            .otherwise(
+                pl.concat_list(
+                    pl.struct(sseqid=pl.lit("none"), qstart=pl.lit(0), qend=pl.lit(0))
+                )
             )
-            .otherwise(pl.lit([0])).explode()
+            .explode()
+            .explode(),
         )
-        .explode("action", "reason", "qstart", "qend")
+        .explode("action", "cols")
+        .with_columns(pl.col("cols").struct.field(["sseqid", "qstart", "qend"]))
     )
 
     return result
+
 
 def create_bed(blastout: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
     """Format the output from determine_actions() into valid BED."""
@@ -327,7 +333,7 @@ def create_bed(blastout: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
         .when(pl.col("action") == "trim_l")
         .then(pl.lit(end_length))
         .otherwise(pl.lit(0)),
-        reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("reason")),
+        reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid")),
     )
 
 
@@ -335,6 +341,7 @@ def create_bed(blastout: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
 def cli():
     """Main entry point for the tool."""
     pass
+
 
 @click.command("blastout_to_bed")
 @click.argument("blastout", type=click.Path(exists=True))
@@ -372,7 +379,7 @@ def blastout_to_bed(
 
     BLASTOUT: tabular file resulting from BLAST with -outfmt "6 std qlen". If the qlen column
     is missing, lengths can be calculated by passing the --bam option.
-    
+
     ADAPTER_YAML: yaml file contaning a list with the following fields per adapters:
         - name: name of adapter. can be a regular expression
           discard_middle: True/False - discard read if adapter found in middle
@@ -404,6 +411,7 @@ def blastout_to_bed(
         bed.collect().write_csv(output, separator="\t", include_header=False)
     else:
         click.echo(bed.collect().write_csv(separator="\t", include_header=False))
+
 
 @click.command("filter_bam_to_fasta")
 @click.argument("bed", type=click.Path(exists=True))
