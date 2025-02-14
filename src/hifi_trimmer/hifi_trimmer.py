@@ -1,11 +1,11 @@
 import click
+import csv
 import bgzip
 from pathlib import Path
 import polars as pl
 import pysam
-import csv
 import yaml
-import pdb
+
 
 def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
@@ -15,6 +15,7 @@ def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
         print(exc)
 
     return pl.DataFrame(adapters).lazy()
+
 
 def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
     """Read BLAST outformat file to a LazyFrame.
@@ -111,26 +112,24 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
     """Check if any adapters in a BLAST dataframe match to more than one
     adapter sequence in the YAML file.
     """
-    adapters = adapters.select("adapter").unique()
     counts = (
-        (
-            blast.select(pl.col("sseqid"))
-            .unique()
-            .join(adapters, how="cross")
-            .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
-            .group_by("sseqid")
-            .agg(n=pl.col("sseqid").n_unique())
-        )
-        .filter(pl.col("n") > 2)
+        blast.select(pl.col("sseqid"))
+        .unique()
+        .join_where(adapters, pl.col("sseqid").str.contains(pl.col("adapter")))
+        .group_by("sseqid")
+        .len()
+        .filter(pl.col("len") > 1)
         .collect()["sseqid"]
         .to_list()
     )
 
     return counts
 
+
 def format_fasta_record(header: str, sequence: str) -> str:
     """Format a header and sequence into FASTA format"""
     return f">{header}\n{sequence}\n"
+
 
 def trim_positions(seq, ranges):
     """Trim DNA sequence seq to remove the positions specified in ranges.
@@ -332,7 +331,7 @@ def cli():
 
 @click.command("blastout_to_bed")
 @click.argument("blastout", type=click.File(mode="r"))
-@click.argument("adapter_yaml", type=click.File(mode='r'))
+@click.argument("adapter_yaml", type=click.File(mode="r"))
 @click.option(
     "-o",
     "--output",
@@ -372,17 +371,18 @@ def blastout_to_bed(
     is missing, lengths can be calculated by passing the --bam option.
 
     ADAPTER_YAML: yaml file contaning a list with the following fields per adapters:
-        - name: name of adapter. can be a regular expression
-          discard_middle: True/False - discard read if adapter found in middle
-          discard_end: True/False  - discard read if adapter found in end
-          trim_end: True/False - trim read if adapter found in end
-          middle_pident: int - minimum pident requred to identify adapter in middle of read
-          middle_length: int - minimum match length required to identify adapter in middle of read
-          end_pident: int - minimum pident requred to identify adapter in end window
-          end_length: int - minimum match length requred to identify adapter in end window
+ 
+        - name: (name of adapter. can be a regular expression) \n
+        - discard_middle: True/False (discard read if adapter found in middle) \n
+        - discard_end: True/False (discard read if adapter found in end) \n
+        - trim_end: True/False (trim read if adapter found in end) \n
+        - middle_pident: int (minimum pident requred to identify adapter in middle of read) \n
+        - middle_length: int (minimum match length required to identify adapter in middle of read) \n
+        - end_pident: int (minimum pident requred to identify adapter in end window) \n
+        - end_length: int (minimum match length requred to identify adapter in end window) \n
 
     Output:
-    BED file to stdout
+    By default, writes BED to standard output. This can be redirected with the -o/--output option.
     """
     adapters = read_adapter_yaml(adapter_yaml)
     blast = read_blast(blastout, bam)
@@ -391,7 +391,7 @@ def blastout_to_bed(
     check = check_records(blast, adapters)
     if len(check) > 0:
         raise click.ClickException(
-            f"Barcodes {check.join(", ")} match to more than one adapter in {adapter_yaml}!"
+            f"Barcodes {', '.join(check)} match to more than one adapter in {adapter_yaml.name}!"
         )
 
     ## process the blastout file
@@ -400,6 +400,7 @@ def blastout_to_bed(
     bed = create_bed(actions, end_length)
 
     bed.collect().write_csv(output, separator="\t", include_header=False)
+
 
 @click.command("filter_bam_to_fasta")
 @click.argument("bed", type=click.File(mode="r"))
@@ -412,7 +413,7 @@ def filter_bam_to_fasta(bed, bam, outfile):
 
     BED: BED file describing regions of the read set to exclude.
     BAM: BAM file in which to filter reads
-    OUTFILE: (optional) The output bgzipped fasta file
+    OUTFILE: File to write the filtered reads to (bgzipped).
     """
     if outfile is None:
         outfile = Path(bam).stem + ".filtered.fa.gz"
@@ -459,7 +460,7 @@ def filter_bam_to_fasta(bed, bam, outfile):
 
     try:
         read = next(filters)
-        print(f"Read {read["read"]} not processed!")
+        print(f"Read {read['read']} not processed!")
         for read in filters:
             print(f"Read {read['read']} not processed!")
 

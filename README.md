@@ -11,46 +11,61 @@ pip install .
 ## Usage
 
 ```
-$ uv run hifi_trimmer blastout_to_bed --help
 Usage: hifi_trimmer blastout_to_bed [OPTIONS] BLASTOUT ADAPTER_YAML
 
   Processes the input blastout file according to the adapter yaml key.
 
   BLASTOUT: tabular file resulting from BLAST with -outfmt "6 std qlen". If
   the qlen column is missing, lengths can be calculated by passing the --bam
-  option. ADAPTER_YAML: yaml file contaning a list with the following fields
-  per adapters:     - name: name of adapter. can be a regular expression
-  discard_middle: True/False - discard read if adapter found in middle
-  discard_end: True/False  - discard read if adapter found in end
-  trim_end: True/False - trim read if adapter found in end
-  middle_pident: int - minimum pident requred to identify adapter in middle of
-  read       middle_length: int - minimum match length required to identify
-  adapter in middle of read       end_pident: int - minimum pident requred to
-  identify adapter in end window       end_length: int - minimum match length
-  requred to identify adapter in end window
+  option.
 
-  Output: BED file to stdout
+  ADAPTER_YAML: yaml file contaning a list with the following fields per
+  adapters:
+
+      - name: (name of adapter. can be a regular expression)
+
+      - discard_middle: True/False (discard read if adapter found in middle)
+
+      - discard_end: True/False (discard read if adapter found in end)
+
+      - trim_end: True/False (trim read if adapter found in end)
+
+      - middle_pident: int (minimum pident requred to identify adapter in
+      middle of read)
+
+      - middle_length: int (minimum match length required to identify adapter
+      in middle of read)
+
+      - end_pident: int (minimum pident requred to identify adapter in end
+      window)
+
+      - end_length: int (minimum match length requred to identify adapter in
+      end window)
+
+  Output: By default, writes BED to standard output. This can be redirected
+  with the -o/--output option.
 
 Options:
-  --bam PATH                      If blastout file has no read length field, a
+  -o, --output FILENAME           Output file to write BED to.
+  -b, --bam FILENAME              If blastout file has no read length field, a
                                   BAM file of reads to get read lengths
-  --min_length_after_trimming INTEGER
+  -ml, --min_length_after_trimming INTEGER
                                   Minumum length of a read after trimming the
                                   ends in order not to be discarded.
-  --end_length INTEGER            Window size at either end of the read to be
+  -el, --end_length INTEGER       Window size at either end of the read to be
                                   considered as 'ends' for searching.
   --help                          Show this message and exit.
 ```
 
 ```
-$ uv run hifi_trimmer filter_bam_to_fasta --help
-Usage: hifi_trimmer filter_bam_to_fasta [OPTIONS] BED BAM [OUTFILE]
+Usage: hifi_trimmer filter_bam_to_fasta [OPTIONS] BED BAM OUTFILE
 
   Filter the reads stored in a BAM file using the appropriate BED file
-  produced  by blastout_to_bed and write to a bgzipped fasta file.
+  produced by blastout_to_bed and write to a bgzipped fasta file.
 
   BED: BED file describing regions of the read set to exclude. BAM: BAM file
-  in which to filter reads OUTFILE: (optional) The output bgzipped fasta file
+  in which to filter reads OUTFILE: File to write the filtered reads to
+  (bgzipped).
 
 Options:
   --help  Show this message and exit.
