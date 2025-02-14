@@ -79,34 +79,27 @@ First, BLAST your reads against an adapter database:
 blast -query <(samtools fasta /path/to/bam) -db /path/to/adapter/blast/db -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust no -soft_masking true -evalue 700 -searchsp 1750000000000 -outfmt "6 std qlen" | bgzip > blastout.gz
 ```
 
-Then, create a YAML file describing what to do with each adapter hit:
-```
-- adapter: "NGB00972"
-  discard_middle: True // Discard read if hit found in middle of read
-  discard_end: False   // Discard read if hit found in end of read
-  trim_end: True       // Trim read if hit found at end of read and read not otherwise discarded
-  middle_pident: 95    // Minimum hit percent identity for match in middle
-  middle_length: 44    // Minimum hit length for match in middle
-  end_pident: 90       // Minimum hit percent identity for match at end
-  end_length: 18       // Minimum hit length for match at end
-- adapter: "NGB00973"
-  discard_middle: True
-  discard_end: False
-  trim_end: True
-  middle_pident: 95
-  middle_length: 34
-  end_pident: 90
-  end_length: 18
-```
-
-Using these, you can process the BLAST results into a BED file:
+To create a BED file, you then need to create a YAML file describing the actions to take for each adapter:
 
 ```
-hifi_trimmer blastout_to_bed blastout.gz adapters.yaml > out.bed
+- adapter: "^NGB00972"     // regular expression matching adapter names
+  discard_middle: True     // discard read if adapter is found in the middle
+  discard_end: False       // discard read if adapter found at end
+  trim_end: True           // trim read if adapter is found at end (overridden by discard choice)
+  middle_pident: 95        // minimum percent identity for a match in the middle of the read
+  middle_length: 44        // minimum match length for a match in the middle of the read
+  end_pident: 90           // minimum percent identity for a match at the end of the read
+  end_length: 18           // minimum match length for a match at the end of the read
 ```
 
-And then process the BAM and BED files:
+Then run `blastout_to_bed` to generate a BED file (you only need to specify the BAM file if the blastout doesn't have read lengths in column 13):
 
 ```
-hifi_trimmer filter_bam_to_fasta out.bed /path/to/bam reads.filtered.fa.gz
+hifi_trimmer blastout_to_bed --bam /path/to/bam /path/to/blastout.gz /path/to/yaml --output /path/to/bed
+```
+
+Then filter the bam file using the BED file: 
+
+```
+hifi_trimmer filter_bam_to_fasta /path/to/bed /path/to/bam /path/to/final/fasta.gz
 ```
