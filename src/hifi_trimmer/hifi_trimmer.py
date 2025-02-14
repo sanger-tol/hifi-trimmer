@@ -3,22 +3,18 @@ import bgzip
 from pathlib import Path
 import polars as pl
 import pysam
-import re
-import sys
 import csv
 import yaml
-
+import pdb
 
 def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
-    with open(yaml_path) as stream:
-        try:
-            adapters = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+    try:
+        adapters = yaml.safe_load(yaml_path)
+    except yaml.YAMLError as exc:
+        print(exc)
 
     return pl.DataFrame(adapters).lazy()
-
 
 def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
     """Read BLAST outformat file to a LazyFrame.
@@ -41,8 +37,8 @@ def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
             lengths.lazy(), left_on="column_1", right_on="qseqid", how="left", suffix=""
         )
     else:
-        sys.exit(
-            "Error: BLAST file only has 12 columns, but no BAM file has been provided to count!"
+        raise click.ClickException(
+            "BLAST file only has 12 columns, but no BAM file has been provided to count!"
         )
 
     column_names = [
@@ -120,30 +116,21 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
         (
             blast.select(pl.col("sseqid"))
             .unique()
-            .join_where(adapters, pl.col("sseqid").str.contains(pl.col("adapter")))
+            .join(adapters, how="cross")
+            .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
             .group_by("sseqid")
             .agg(n=pl.col("sseqid").n_unique())
         )
-        .collect()["n"]
+        .filter(pl.col("n") > 2)
+        .collect()["sseqid"]
         .to_list()
     )
 
-    return any(x > 1 for x in counts)
-
+    return counts
 
 def format_fasta_record(header: str, sequence: str) -> str:
     """Format a header and sequence into FASTA format"""
     return f">{header}\n{sequence}\n"
-
-
-def iter_exhausted(iter):
-    """Check if the provided iterable is exhausted."""
-    try:
-        next(iter)
-        return False
-    except StopIteration:
-        return True
-
 
 def trim_positions(seq, ranges):
     """Trim DNA sequence seq to remove the positions specified in ranges.
@@ -205,7 +192,10 @@ def match_hits(
     blastout = (
         blastout
         ## match each blast hit with an adapter
-        .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
+        ## below line more efficient but currently can't preserve order
+        # .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
+        .join(adapter_df, how="cross", maintain_order="left")
+        .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
         ## Determine which hits to keep and return rows with a "real" hit
         .with_columns(discard=discard, trim_l=trim_l, trim_r=trim_r)
         .filter(pl.any_horizontal("discard", "trim_l", "trim_r"))
@@ -225,9 +215,6 @@ def determine_actions(
     end_length: length of window at either end of read which is examined for trimming
     min_length: minimum length of a read after trimming to keep
     """
-
-    def filter_get_max(getcol, maxcol, cond) -> pl.Expr:
-        return getcol.filter(cond).get(maxcol.filter(cond).arg_max())
 
     def filter_get_min(getcol, maxcol, cond) -> pl.Expr:
         return getcol.filter(cond).get(maxcol.filter(cond).arg_min())
@@ -309,7 +296,7 @@ def determine_actions(
                     pl.struct(sseqid=pl.lit("none"), qstart=pl.lit(0), qend=pl.lit(0))
                 )
             )
-            .explode()
+            .explode()  ## this could be tidied
             .explode(),
         )
         .explode("action", "cols")
@@ -344,29 +331,33 @@ def cli():
 
 
 @click.command("blastout_to_bed")
-@click.argument("blastout", type=click.Path(exists=True))
-@click.argument("adapter_yaml", type=click.Path(exists=True))
+@click.argument("blastout", type=click.File(mode="r"))
+@click.argument("adapter_yaml", type=click.File(mode='r'))
 @click.option(
+    "-o",
     "--output",
-    default=None,
+    default="-",
     required=False,
-    type=click.Path(exists=False),
+    type=click.File(mode="wb"),
     help="Output file to write BED to.",
 )
 @click.option(
+    "-b",
     "--bam",
     default=None,
     required=False,
-    type=click.Path(exists=True),
+    type=click.File(mode="rb"),
     help="If blastout file has no read length field, a BAM file of reads to get read lengths",
 )
 @click.option(
+    "-ml",
     "--min_length_after_trimming",
     default=300,
     type=int,
     help="Minumum length of a read after trimming the ends in order not to be discarded.",
 )
 @click.option(
+    "-el",
     "--end_length",
     default=150,
     type=int,
@@ -397,9 +388,10 @@ def blastout_to_bed(
     blast = read_blast(blastout, bam)
 
     ## Make sure each barcode that matches an adapter matches only one adapter
-    if check_records(blast, adapters):
-        sys.exit(
-            f"Error: adapters in {adapter_yaml} match to more than one adapter in {blastout}!"
+    check = check_records(blast, adapters)
+    if len(check) > 0:
+        raise click.ClickException(
+            f"Barcodes {check.join(", ")} match to more than one adapter in {adapter_yaml}!"
         )
 
     ## process the blastout file
@@ -407,16 +399,12 @@ def blastout_to_bed(
     actions = determine_actions(hits, end_length, min_length_after_trimming)
     bed = create_bed(actions, end_length)
 
-    if output is not None:
-        bed.collect().write_csv(output, separator="\t", include_header=False)
-    else:
-        click.echo(bed.collect().write_csv(separator="\t", include_header=False))
-
+    bed.collect().write_csv(output, separator="\t", include_header=False)
 
 @click.command("filter_bam_to_fasta")
-@click.argument("bed", type=click.Path(exists=True))
-@click.argument("bam", type=click.Path(exists=True))
-@click.argument("outfile", default=None, required=False, type=click.Path(exists=False))
+@click.argument("bed", type=click.File(mode="r"))
+@click.argument("bam", type=click.File(mode="rb"))
+@click.argument("outfile", default=None, required=True, type=click.File(mode="wb"))
 def filter_bam_to_fasta(bed, bam, outfile):
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
@@ -431,50 +419,55 @@ def filter_bam_to_fasta(bed, bam, outfile):
 
     ## read BED as dictionary
     filters = csv.DictReader(
-        open(bed, "r"), delimiter="\t", fieldnames=["read", "start", "end", "reason"]
+        bed, delimiter="\t", fieldnames=["read", "start", "end", "reason"]
     )
-    with open(outfile, "wb") as raw:
-        with bgzip.BGZipWriter(raw) as out:
-            with pysam.AlignmentFile(
-                bam, "rb", check_sq=False, require_index=False
-            ) as b:
-                ## initialise first BED record
-                r = next(filters, None)
-                ## Process: for each read in the BAM, check if it matches the current BED record.
-                ## If yes, pull BED records until we reach a record for the next read.
-                ## Then trim the sequence using the records pulled and write to fasta.
-                ## If not, write record straight to disk
-                for read in b.fetch(until_eof=True):
-                    if r is not None and r["read"] == read.query_name:
-                        ranges = [(int(r["start"]), int(r["end"]))]
 
-                        while True:
-                            r = next(filters, None)
-                            if r is None or r["read"] != read.query_name:
-                                break
-                            ranges.append((int(r["start"]), int(r["end"])))
+    with bgzip.BGZipWriter(outfile) as out:
+        with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
+            ## initialise first BED record
+            r = next(filters, None)
+            ## Process: for each read in the BAM, check if it matches the current BED record.
+            ## If yes, pull BED records until we reach a record for the next read.
+            ## Then trim the sequence using the records pulled and write to fasta.
+            ## If not, write record straight to disk
+            for read in b.fetch(until_eof=True):
+                if r is not None and r["read"] == read.query_name:
+                    ranges = [(int(r["start"]), int(r["end"]))]
 
-                        sequence = trim_positions(read.query_sequence, ranges)
-                        click.echo(
-                            f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}"
-                        )
-                        if len(sequence) > 0:
-                            out.write(
-                                format_fasta_record(read.query_name, sequence).encode(
-                                    "utf-8"
-                                )
-                            )
-                    else:
+                    while True:
+                        r = next(filters, None)
+                        if r is None or r["read"] != read.query_name:
+                            break
+                        ranges.append((int(r["start"]), int(r["end"])))
+
+                    sequence = trim_positions(read.query_sequence, ranges)
+                    click.echo(
+                        f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}"
+                    )
+                    if len(sequence) > 0:
                         out.write(
-                            format_fasta_record(
-                                read.query_name, read.query_sequence
-                            ).encode("utf-8")
+                            format_fasta_record(read.query_name, sequence).encode(
+                                "utf-8"
+                            )
                         )
+                else:
+                    out.write(
+                        format_fasta_record(
+                            read.query_name, read.query_sequence
+                        ).encode("utf-8")
+                    )
 
-    if not iter_exhausted(filters):
-        sys.exit(
-            "WARNING: not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?"
+    try:
+        read = next(filters)
+        print(f"Read {read["read"]} not processed!")
+        for read in filters:
+            print(f"Read {read['read']} not processed!")
+
+        raise click.ClickException(
+            "Not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?"
         )
+    except StopIteration:
+        print("Read filtering complete!")
 
 
 cli.add_command(blastout_to_bed)
