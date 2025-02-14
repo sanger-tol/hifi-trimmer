@@ -119,8 +119,7 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
         (
             blast.select(pl.col("sseqid"))
             .unique()
-            .join(adapters, how="cross")
-            .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
+            .join_where(adapters, pl.col("sseqid").str.contains(pl.col("adapter")))
             .group_by("sseqid")
             .agg(n = pl.col("sseqid").n_unique())
         )
@@ -204,17 +203,14 @@ def match_hits(
 
     blastout = (
         blastout
-        ## match all adapters against all rows and filter to keep just those that
-        ## have a regex match
-        .join(adapter_df, how="cross", on=None, maintain_order="left")
-        .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
+        ## match each blast hit with an adapter
+        .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
         ## Determine which hits to keep and return rows with a "real" hit
         .with_columns(discard=discard, trim_l=trim_l, trim_r=trim_r)
         .filter(pl.any_horizontal("discard", "trim_l", "trim_r"))
     )
 
     return blastout
-
 
 def determine_actions(
     blastout: pl.LazyFrame, end_length: int, min_length: int
