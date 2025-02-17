@@ -23,7 +23,7 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
     )
 
 
-def write_regions_file(hits: pl.LazyFrame) -> pl.LazyFrame:
+def write_region_file(hits: pl.LazyFrame) -> pl.LazyFrame:
     """Takes a pl.LazyFrame of determined adapter matches and returns
     a pl.LazyFrame with a single column containing the unique
     region specifications (adapter:start-end) for each hit.
@@ -35,8 +35,8 @@ def write_regions_file(hits: pl.LazyFrame) -> pl.LazyFrame:
             pl.when(pl.col("sstart") > pl.col("send"))
             .then(
                 pl.struct(
-                    start="send",
-                    end="sstart",
+                    sstart="send",
+                    send="sstart",
                 )
             )
             .otherwise(pl.struct(["sstart", "send"]))
