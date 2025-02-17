@@ -3,6 +3,7 @@ import polars as pl
 import pysam
 import yaml
 
+
 def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
     try:
@@ -11,6 +12,7 @@ def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
         print(exc)
 
     return pl.DataFrame(adapters).lazy()
+
 
 def read_readlengths(filtered_reads: set, bam: str) -> pl.DataFrame:
     """Count the lengths of reads in set filtered_reads using bamfile bam"""
@@ -23,6 +25,7 @@ def read_readlengths(filtered_reads: set, bam: str) -> pl.DataFrame:
                 )
 
     return pl.DataFrame(lengths)
+
 
 def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
     """Read BLAST outformat file to a LazyFrame.
@@ -81,6 +84,8 @@ def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
                 "length",
                 "qstart",
                 "qend",
+                "sstart",
+                "send",
                 "evalue",
                 "read_length",
             ]

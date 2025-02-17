@@ -1,13 +1,15 @@
 import click
-from hifi_trimmer.bed import create_bed, filter_bam
+from hifi_trimmer.output import create_bed, filter_bam, write_regions_file
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
+
 
 @click.group()
 def cli():
     """Main entry point for the tool."""
     pass
+
 
 @click.command("blastout_to_bed")
 @click.argument("blastout", type=click.File(mode="r"))
@@ -42,8 +44,21 @@ def cli():
     type=int,
     help="Window size at either end of the read to be considered as 'ends' for searching.",
 )
+@click.option(
+    "-rf",
+    "--out_region_file",
+    default=None,
+    type=click.File(mode="w"),
+    help="Write regions for the matched adapter sequences to specified file",
+)
 def blastout_to_bed(
-    blastout, adapter_yaml, output, bam, min_length_after_trimming, end_length
+    blastout,
+    adapter_yaml,
+    output,
+    bam,
+    min_length_after_trimming,
+    end_length,
+    out_region_file,
 ):
     """Processes the input blastout file according to the adapter yaml key.
 
@@ -51,7 +66,7 @@ def blastout_to_bed(
     is missing, lengths can be calculated by passing the --bam option.
 
     ADAPTER_YAML: yaml file contaning a list with the following fields per adapters:
- 
+
         - name: (name of adapter. can be a regular expression) \n
         - discard_middle: True/False (discard read if adapter found in middle) \n
         - discard_end: True/False (discard read if adapter found in end) \n
@@ -79,7 +94,12 @@ def blastout_to_bed(
     actions = determine_actions(hits, end_length, min_length_after_trimming)
     bed = create_bed(actions, end_length)
 
+    if out_region_file is not None:
+        regions = write_regions_file(hits)
+        regions.write_csv(out_region_file, separator="\t", include_header=False)
+
     bed.collect().write_csv(output, separator="\t", include_header=False)
+
 
 @click.command("filter_bam_to_fasta")
 @click.argument("bed", type=click.File(mode="r"))
@@ -107,6 +127,7 @@ def filter_bam_to_fasta(bed, bam, outfile):
         )
     except StopIteration:
         print("Read filtering complete!")
+
 
 cli.add_command(blastout_to_bed)
 cli.add_command(filter_bam_to_fasta)

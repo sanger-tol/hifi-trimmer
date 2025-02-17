@@ -1,5 +1,6 @@
 import polars as pl
 
+
 def match_hits(
     blastout: pl.LazyFrame, adapter_df: pl.LazyFrame, end_length: int
 ) -> pl.LazyFrame:

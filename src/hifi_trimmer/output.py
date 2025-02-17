@@ -4,6 +4,7 @@ import polars as pl
 import pysam
 from hifi_trimmer.utils import trim_positions, format_fasta_record
 
+
 def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
     """Format the output from determine_actions() into valid BED."""
     return actions.select(
@@ -20,6 +21,38 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
         .otherwise(pl.lit(0)),
         reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid")),
     )
+
+
+def write_regions_file(hits: pl.LazyFrame) -> pl.LazyFrame:
+    """Takes a pl.LazyFrame of determined adapter matches and returns
+    a pl.LazyFrame with a single column containing the unique
+    region specifications (adapter:start-end) for each hit.
+    """
+    return (
+        hits.select(["sseqid", "sstart", "send"])
+        .unique()
+        .with_columns(
+            pl.when(pl.col("sstart") > pl.col("send"))
+            .then(
+                pl.struct(
+                    start="send",
+                    end="sstart",
+                )
+            )
+            .otherwise(pl.struct(["sstart", "send"]))
+            .struct.field(["sstart", "send"]),
+        )
+        .select(
+            pl.concat_str(
+                pl.col("sseqid"),
+                pl.lit(":"),
+                pl.col("sstart"),
+                pl.lit("-"),
+                pl.col("send"),
+            ).alias("region")
+        )
+    )
+
 
 def filter_bam(outfile, bam, bed):
     ## read BED as dictionary

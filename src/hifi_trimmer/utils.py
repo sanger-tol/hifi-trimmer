@@ -1,5 +1,6 @@
 import polars as pl
 
+
 def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
     """Check if any adapters in a BLAST dataframe match to more than one
     adapter sequence in the YAML file.
@@ -17,9 +18,11 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
 
     return counts
 
+
 def format_fasta_record(header: str, sequence: str) -> str:
     """Format a header and sequence into FASTA format"""
     return f">{header}\n{sequence}\n"
+
 
 def trim_positions(seq, ranges):
     """Trim DNA sequence seq to remove the positions specified in ranges.
