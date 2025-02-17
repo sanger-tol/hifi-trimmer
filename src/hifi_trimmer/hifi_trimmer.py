@@ -96,7 +96,9 @@ def blastout_to_bed(
 
     if out_region_file is not None:
         regions = write_regions_file(hits)
-        regions.write_csv(out_region_file, separator="\t", include_header=False)
+        regions.collect().write_csv(
+            out_region_file, separator="\t", include_header=False
+        )
 
     bed.collect().write_csv(output, separator="\t", include_header=False)
 
