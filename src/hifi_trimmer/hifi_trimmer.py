@@ -48,7 +48,7 @@ def cli():
     "-rf",
     "--out_region_file",
     default=None,
-    type=click.File(mode="w"),
+    type=click.File(mode="wb"),
     help="Write regions for the matched adapter sequences to specified file",
 )
 def blastout_to_bed(
