@@ -15,8 +15,8 @@ def match_hits(
     discard = (
         (pl.col("discard_middle")).and_(
             (pl.col("read_length") > 2 * end_length),
-            (pl.col("qstart") > end_length),
-            (pl.col("qend") < pl.col("read_length") - end_length),
+            (pl.col("qend") > end_length),
+            (pl.col("qstart") < pl.col("read_length") - end_length),
             (pl.col("pident") >= pl.col("middle_pident")),
             (pl.col("length") >= pl.col("middle_length")),
         )
