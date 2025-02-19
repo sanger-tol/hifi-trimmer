@@ -1,5 +1,5 @@
 import click
-from hifi_trimmer.output import create_bed, filter_bam, write_region_file
+from hifi_trimmer.output import create_bed, filter_bam
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
@@ -45,11 +45,11 @@ def cli():
     help="Window size at either end of the read to be considered as 'ends' for searching.",
 )
 @click.option(
-    "-rf",
-    "--region_file",
+    "-hf",
+    "--hits_file",
     default=None,
     type=click.File(mode="wb"),
-    help="Write regions for the matched adapter sequences to specified file",
+    help="Write the hits identified using the given adapter specifications to the specified TSV.",
 )
 def blastout_to_bed(
     blastout,
@@ -58,7 +58,7 @@ def blastout_to_bed(
     bam,
     min_length_after_trimming,
     end_length,
-    region_file,
+    hits_file,
 ):
     """Processes the input blastout file according to the adapter yaml key.
 
@@ -95,9 +95,8 @@ def blastout_to_bed(
     actions = determine_actions(hits, end_length, min_length_after_trimming)
     bed = create_bed(actions, end_length)
 
-    if region_file is not None:
-        regions = write_regions_file(hits)
-        regions.collect().write_csv(region_file, separator="\t", include_header=False)
+    if hits_file is not None:
+        hits.collect().write_csv(hits_file, separator="\t", include_header=False)
 
     bed.collect().write_csv(output, separator="\t", include_header=False)
 
