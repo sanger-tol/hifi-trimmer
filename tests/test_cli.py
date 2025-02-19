@@ -25,6 +25,9 @@ def list_test_data():
 
 
 def md5checksum(fname):
+    """
+    Get the MD5 checksum for a file.
+    """
     md5 = hashlib.md5()
     with open(fname, "rb") as f:
         while chunk := f.read(4096):
@@ -34,38 +37,45 @@ def md5checksum(fname):
 
 
 @pytest.mark.parametrize("testdata", list_test_data())
-def test_blastout_to_bed(tmp_path, testdata):
+def test_process_blast(tmp_path, testdata):
     runner = CliRunner()
 
-    with runner.isolated_filesystem(temp_dir=tmp_path):
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
         result = runner.invoke(
             cli,
             [
-                "blastout_to_bed",
+                "process_blast",
+                "--prefix",
+                "test",
+                "--hits",
                 "--bam",
                 testdata["bam"],
                 testdata["blastout"],
                 testdata["yaml"],
             ],
         )
-        result_md5 = hashlib.md5(result.output.encode("utf-8")).hexdigest()
-        example_md5 = md5checksum(testdata["bed"])
+        
+        md5_bed = md5checksum(pathlib.Path(td) / "test.bed")
+        md5_summary = md5checksum(pathlib.Path(td) / "test.summary")
+        md5_hits = md5checksum(pathlib.Path(td) / "test.hits")
 
     assert result.exit_code == 0
-    assert result_md5 == example_md5
+    assert (md5_bed == md5checksum(testdata["bed"]))
+    assert (md5_summary == md5checksum(testdata["summary"]))
+    assert (md5_hits == md5checksum(testdata["hits"]))
 
 
 @pytest.mark.parametrize("testdata", list_test_data())
-def test_filter_bam_to_fasta(tmp_path, testdata):
+def test_filter_bam(tmp_path, testdata):
     runner = CliRunner()
 
-    with runner.isolated_filesystem(temp_dir=tmp_path):
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
         result = runner.invoke(
             cli,
-            ["filter_bam_to_fasta", testdata["bed"], testdata["bam"], "output.fa.gz"],
+            ["filter_bam", testdata["bam"], testdata["bed"], "test.filtered.fa.gz"],
         )
-        result_md5 = md5checksum("output.fa.gz")
-        example_md5 = md5checksum(testdata["fa"])
+
+        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fa.gz")
 
     assert result.exit_code == 0
-    assert result_md5 == example_md5
+    assert (md5_fasta == md5checksum(testdata["fa"]))

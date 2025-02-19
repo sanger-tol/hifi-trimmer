@@ -73,40 +73,19 @@ def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
         "read_length",
     ]
 
-    blastout = (
-        blastout.rename(
-            {
-                old: new
-                for old, new in zip(blastout.collect_schema().names(), column_names)
-            }
-        )
-        ## reorder start-end to correct strandedness as we're not interested here
-        .select(
-            [
-                "qseqid",
-                "sseqid",
-                "pident",
-                "length",
-                "qstart",
-                "qend",
-                "sstart",
-                "send",
-                "evalue",
-                "read_length",
-            ]
-        )
-        .with_columns(
-            pl.col("qseqid").set_sorted(),  ## Set sorted for faster grouping operations
-            pl.when(pl.col("qstart") > pl.col("qend"))
-            .then(
-                pl.struct(
-                    start="qend",
-                    end="qstart",
-                )
+    blastout = blastout.rename(
+        {old: new for old, new in zip(blastout.collect_schema().names(), column_names)}
+    ).with_columns(
+        pl.col("qseqid").set_sorted(),  ## Set sorted for faster grouping operations
+        pl.when(pl.col("qstart") > pl.col("qend"))
+        .then(
+            pl.struct(
+                start="qend",
+                end="qstart",
             )
-            .otherwise(pl.struct(["qstart", "qend"]))
-            .struct.field(["qstart", "qend"]),
         )
+        .otherwise(pl.struct(["qstart", "qend"]))
+        .struct.field(["qstart", "qend"]),
     )
 
     return blastout

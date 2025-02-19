@@ -1,5 +1,6 @@
 import click
-from hifi_trimmer.output import create_bed, filter_bam
+import re
+from hifi_trimmer.output import create_bed, filter_bam_with_bed, write_summary
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
@@ -11,16 +12,16 @@ def cli():
     pass
 
 
-@click.command("blastout_to_bed")
+@click.command("process_blast")
 @click.argument("blastout", type=click.File(mode="r"))
 @click.argument("adapter_yaml", type=click.File(mode="r"))
 @click.option(
-    "-o",
-    "--output",
-    default="-",
+    "-p",
+    "--prefix",
+    default=None,
     required=False,
-    type=click.File(mode="wb"),
-    help="Output file to write BED to.",
+    type=str,
+    help="Output prefix for results. Defaults to the basename of the blastout if not provided.",
 )
 @click.option(
     "-b",
@@ -35,30 +36,39 @@ def cli():
     "--min_length_after_trimming",
     default=300,
     type=int,
-    help="Minumum length of a read after trimming the ends in order not to be discarded.",
+    help="Minumum length of a read after trimming the ends in order not to be discarded",
 )
 @click.option(
     "-el",
     "--end_length",
     default=150,
     type=int,
-    help="Window size at either end of the read to be considered as 'ends' for searching.",
+    help="Window size at either end of the read to be considered as 'ends' for searching",
 )
 @click.option(
     "-hf",
-    "--hits_file",
-    default=None,
-    type=click.File(mode="wb"),
-    help="Write the hits identified using the given adapter specifications to the specified TSV.",
+    "--hits",
+    "hits_flag",
+    default=False,
+    is_flag=True,
+    type=bool,
+    help="Write the hits identified using the given adapter specifications to TSV",
 )
-def blastout_to_bed(
+@click.option(
+    "--no-summary",
+    default=False,
+    type=bool,
+    help="Write a summary TSV with the number of hits for each adapter",
+)
+def process_blast(
     blastout,
     adapter_yaml,
-    output,
+    prefix,
     bam,
     min_length_after_trimming,
     end_length,
-    hits_file,
+    hits_flag,
+    no_summary,
 ):
     """Processes the input blastout file according to the adapter yaml key.
 
@@ -95,26 +105,34 @@ def blastout_to_bed(
     actions = determine_actions(hits, end_length, min_length_after_trimming)
     bed = create_bed(actions, end_length)
 
-    if hits_file is not None:
-        hits.collect().write_csv(hits_file, separator="\t", include_header=False)
+    if prefix is None:
+        prefix = re.sub("\\.blastout.*$", "", blastout.name)
 
-    bed.collect().write_csv(output, separator="\t", include_header=False)
+    if hits_flag:
+        hits.collect().write_csv(prefix + ".hits", separator="\t", include_header=False)
+
+    if not no_summary:
+        write_summary(hits).collect().write_csv(
+            prefix + ".summary", separator="\t", include_header=True
+        )
+
+    bed.collect().write_csv(prefix + ".bed", separator="\t", include_header=False)
 
 
-@click.command("filter_bam_to_fasta")
-@click.argument("bed", type=click.File(mode="r"))
+@click.command("filter_bam")
 @click.argument("bam", type=click.File(mode="rb"))
+@click.argument("bed", type=click.File(mode="r"))
 @click.argument("outfile", default=None, required=True, type=click.File(mode="wb"))
-def filter_bam_to_fasta(bed, bam, outfile):
+def filter_bam(bed, bam, outfile):
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.
 
-    BED: BED file describing regions of the read set to exclude.
     BAM: BAM file in which to filter reads
+    BED: BED file describing regions of the read set to exclude.
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
-    filters = filter_bam(outfile, bam, bed)
+    filters = filter_bam_with_bed(outfile, bam, bed)
 
     try:
         read = next(filters)
@@ -129,8 +147,8 @@ def filter_bam_to_fasta(bed, bam, outfile):
         print("Read filtering complete!")
 
 
-cli.add_command(blastout_to_bed)
-cli.add_command(filter_bam_to_fasta)
+cli.add_command(process_blast)
+cli.add_command(filter_bam)
 
 if __name__ == "__main__":
     cli()

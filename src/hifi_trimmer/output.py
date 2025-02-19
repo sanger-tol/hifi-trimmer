@@ -23,7 +23,15 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
     )
 
 
-def filter_bam(outfile, bam, bed):
+def write_summary(hits: pl.LazyFrame) -> pl.LazyFrame:
+    return (
+        hits.group_by("sseqid", maintain_order=True)
+        .len(name="n_hits")
+        .rename({"sseqid": "adapter"})
+    )
+
+
+def filter_bam_with_bed(outfile, bam, bed):
     ## read BED as dictionary
     filters = csv.DictReader(
         bed, delimiter="\t", fieldnames=["read", "start", "end", "reason"]
