@@ -46,13 +46,16 @@ def read_blast(blast_path: str, bam: str = None) -> pl.LazyFrame:
             )
             lengths = read_readlengths(filtered_reads, bam)
             blastout = blastout.join(
-                lengths.lazy(), left_on="column_1", right_on="qseqid", how="left", suffix=""
+                lengths.lazy(),
+                left_on="column_1",
+                right_on="qseqid",
+                how="left",
+                suffix="",
             )
         else:
             raise click.ClickException(
                 "BLAST file only has 12 columns, but no BAM file has been provided to count!"
             )
-
 
     column_names = [
         "qseqid",

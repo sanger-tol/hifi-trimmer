@@ -12,18 +12,22 @@ def match_hits(
     end_length: length of window at either end of read which is examined for trimming
     """
     ## When to discard a read due to adapter presence
+    middle = (
+        (pl.col("qend") > end_length).and_(
+            (pl.col("read_length") > 2 * end_length),
+            (pl.col("qstart") < pl.col("read_length") - end_length),
+        ),
+    )
+
     discard = (
         (pl.col("discard_middle")).and_(
-            (pl.col("read_length") > 2 * end_length),
-            (pl.col("qend") > end_length),
-            (pl.col("qstart") < pl.col("read_length") - end_length),
+            middle,
             (pl.col("pident") >= pl.col("middle_pident")),
             (pl.col("length") >= pl.col("middle_length")),
         )
     ) | (
         (pl.col("discard_end")).and_(
-            (pl.col("qend") < end_length),
-            (pl.col("qstart") > pl.col("read_length") - end_length),
+            (~middle),
             (pl.col("pident") >= pl.col("end_pident")),
             (pl.col("length") >= pl.col("end_length")),
         )
@@ -31,7 +35,7 @@ def match_hits(
 
     ## When to trim a read at the left end
     trim_l = (pl.col("trim_end")).and_(
-        pl.col("qend") <= end_length,
+        pl.col("qend") < end_length,
         (pl.col("pident") >= pl.col("end_pident")),
         (pl.col("length") >= pl.col("end_length")),
     )
