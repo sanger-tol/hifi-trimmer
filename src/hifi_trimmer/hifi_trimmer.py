@@ -58,7 +58,7 @@ def cli():
     "--no-summary",
     default=False,
     type=bool,
-    help="Write a summary TSV with the number of hits for each adapter",
+    help="Skip writing a summary TSV with the number of hits for each adapter",
 )
 def process_blast(
     blastout,
