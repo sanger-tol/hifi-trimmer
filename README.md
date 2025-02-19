@@ -1,5 +1,13 @@
 # hifi_trimmer
 
+`hifi_trimmer` is a command-line tool for filtering and trimming extraneous adapter hits 
+from a HiFi read set using a BLAST search against a fasta file of adapter sequences. It is 
+designed to be highly configurable, with per-adapter settings to determine actions if 
+the adapter is found at the ends of a read or in the middle. To improve reproducibility,
+the primary output of the tool is a BED file that describes the region of each read to be
+excluded. The tool also includes a command to filter the reads to disk using the produced
+BED file.
+
 ## Installation
 
 ```
@@ -9,6 +17,8 @@ pip install .
 ```
 
 ## Usage
+
+To process a blast output TSV to a BED file:
 
 ```
 Usage: hifi_trimmer process_blast [OPTIONS] BLASTOUT ADAPTER_YAML
@@ -49,6 +59,9 @@ Options:
   --no-summary BOOLEAN            Skip writing a summary TSV with the number
                                   of hits for each adapter
   --help                          Show this message and exit.```
+```
+
+To filter a bam file using the BED file:
 
 ```
 Usage: hifi_trimmer filter_bam [OPTIONS] BAM BED OUTFILE
