@@ -1,5 +1,6 @@
 import bgzip
 import click
+import json
 import re
 
 from hifi_trimmer.output import (
@@ -134,9 +135,9 @@ def process_blast(
         )
 
     if not no_summary:
-        write_summary(blast, hits).collect().write_csv(
-            prefix + ".summary", separator="\t", include_header=True
-        )
+        with open(prefix + ".summary.json", "w") as f:
+            summary = write_summary(blast, hits, bed)
+            json.dump(summary, f, indent=4)
 
     with open(prefix + ".bed.gz", "wb") as f:
         with bgzip.BGZipWriter(f, num_threads=threads) as out:

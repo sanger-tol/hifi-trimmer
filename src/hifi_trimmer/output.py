@@ -3,6 +3,7 @@ import csv
 import polars as pl
 import polars.selectors as cs
 import pysam
+
 from hifi_trimmer.utils import trim_positions, format_fasta_record
 
 
@@ -24,27 +25,41 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
     )
 
 
-def write_summary(blast: pl.LazyFrame, hits: pl.LazyFrame) -> pl.LazyFrame:
+def write_summary(
+    blast: pl.LazyFrame, hits: pl.LazyFrame, bed: pl.LazyFrame
+) -> pl.LazyFrame:
     blast_summary = (
-        blast.with_columns(status=pl.lit("detected"))
-        .group_by(["sseqid", "status"])
+        blast.group_by("sseqid")
         .len("n_hits")
         .rename({"sseqid": "adapter"})
+        .collect()
+        .to_dict(as_series=False)
     )
 
     hit_summary = (
         hits.unpivot(
             cs.by_name(["discard", "trim_l", "trim_r"]),
             index=~cs.by_name(["discard", "trim_l", "trim_r"]),
-            variable_name="status",
+            variable_name="action",
         )
         .filter(pl.col("value"))
-        .group_by(["sseqid", "status"])
+        .group_by(["sseqid", "action"])
         .len(name="n_hits")
         .rename({"sseqid": "adapter"})
+        .sort(["adapter", "action"])
+        .collect()
+        .to_dict(as_series=False)
     )
 
-    return pl.concat([blast_summary, hit_summary]).sort(by=["status", "adapter"])
+    n_bases_removed = (
+        bed.select(n_bases=pl.col("end") - pl.col("start")).collect()["n_bases"].sum()
+    )
+
+    return {
+        "detections": blast_summary,
+        "hits": hit_summary,
+        "bases_removed": n_bases_removed,
+    }
 
 
 def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
