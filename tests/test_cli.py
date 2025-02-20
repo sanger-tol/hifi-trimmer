@@ -54,15 +54,15 @@ def test_process_blast(tmp_path, testdata):
                 testdata["yaml"],
             ],
         )
-        
-        md5_bed = md5checksum(pathlib.Path(td) / "test.bed")
+
+        md5_bed = md5checksum(pathlib.Path(td) / "test.bed.gz")
         md5_summary = md5checksum(pathlib.Path(td) / "test.summary")
         md5_hits = md5checksum(pathlib.Path(td) / "test.hits")
 
     assert result.exit_code == 0
-    assert (md5_bed == md5checksum(testdata["bed"]))
-    assert (md5_summary == md5checksum(testdata["summary"]))
-    assert (md5_hits == md5checksum(testdata["hits"]))
+    assert md5_bed == md5checksum(testdata["bed"])
+    assert md5_summary == md5checksum(testdata["summary"])
+    assert md5_hits == md5checksum(testdata["hits"])
 
 
 @pytest.mark.parametrize("testdata", list_test_data())
@@ -78,4 +78,4 @@ def test_filter_bam(tmp_path, testdata):
         md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fa.gz")
 
     assert result.exit_code == 0
-    assert (md5_fasta == md5checksum(testdata["fa"]))
+    assert md5_fasta == md5checksum(testdata["fa"])

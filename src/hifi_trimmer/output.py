@@ -70,13 +70,17 @@ def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def filter_bam_with_bed(outfile, bam, bed):
+def filter_bam_with_bed(outfile, bam, bed, threads):
     ## read BED as dictionary
-    filters = csv.DictReader(
-        bed, delimiter="\t", fieldnames=["read", "start", "end", "reason"]
-    )
 
-    with bgzip.BGZipWriter(outfile) as out:
+    with bgzip.BGZipReader(bed, num_threads=threads) as file:
+        filters = csv.DictReader(
+            file.read().tobytes().decode("utf-8").splitlines(),
+            delimiter="\t",
+            fieldnames=["read", "start", "end", "reason"],
+        )
+
+    with bgzip.BGZipWriter(outfile, num_threads=threads) as out:
         with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
             ## initialise first BED record
             r = next(filters, None)

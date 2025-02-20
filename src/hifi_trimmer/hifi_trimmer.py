@@ -1,5 +1,7 @@
+import bgzip
 import click
 import re
+
 from hifi_trimmer.output import (
     create_bed,
     filter_bam_with_bed,
@@ -58,14 +60,22 @@ def cli():
     is_flag=True,
     type=bool,
     help="""Write the hits identified using the given adapter specifications to TSV. The format is
-    standard BLAST outfmt 6 with the following extra columns: read_length, discard (bool), trim_l (bool), trim_r (bool)
+    standard BLAST outfmt 6 with the following extra columns: read_length (int), discard (bool), trim_l (bool), trim_r (bool)
     """,
 )
 @click.option(
     "--no-summary",
     default=False,
     type=bool,
+    is_flag=True,
     help="Skip writing a summary TSV with the number of hits for each adapter",
+)
+@click.option(
+    "-t",
+    "--threads",
+    default=1,
+    type=int,
+    help="Number of threads to use for compression",
 )
 def process_blast(
     blastout,
@@ -76,6 +86,7 @@ def process_blast(
     end_length,
     hits_flag,
     no_summary,
+    threads,
 ):
     """Processes the input blastout file according to the adapter yaml key.
 
@@ -97,7 +108,7 @@ def process_blast(
 
     Output:
     By default, writes BED to [prefix].bed, and a summary file with counts of adapter hits
-    detected and filtered to [prefix].summary. 
+    detected and filtered to [prefix].summary.
     """
     adapters = read_adapter_yaml(adapter_yaml)
     blast = read_blast(blastout, bam)
@@ -127,14 +138,27 @@ def process_blast(
             prefix + ".summary", separator="\t", include_header=True
         )
 
-    bed.collect().write_csv(prefix + ".bed", separator="\t", include_header=False)
+    with open(prefix + ".bed.gz", "wb") as f:
+        with bgzip.BGZipWriter(f, num_threads=threads) as out:
+            out.write(
+                bed.collect()
+                .write_csv(separator="\t", include_header=False)
+                .encode("utf-8")
+            )
 
 
 @click.command("filter_bam")
 @click.argument("bam", type=click.File(mode="rb"))
-@click.argument("bed", type=click.File(mode="r"))
+@click.argument("bed", type=click.File(mode="rb"))
 @click.argument("outfile", default=None, required=True, type=click.File(mode="wb"))
-def filter_bam(bed, bam, outfile):
+@click.option(
+    "-t",
+    "--threads",
+    default=1,
+    type=int,
+    help="Number of threads to use for compression",
+)
+def filter_bam(bam, bed, outfile, threads):
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.
@@ -142,10 +166,10 @@ def filter_bam(bed, bam, outfile):
     BAM: BAM file in which to filter reads
 
     BED: BED file describing regions of the read set to exclude.
-    
+
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
-    filters = filter_bam_with_bed(outfile, bam, bed)
+    filters = filter_bam_with_bed(outfile, bam, bed, threads)
 
     try:
         read = next(filters)

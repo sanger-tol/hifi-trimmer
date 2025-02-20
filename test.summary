@@ -1,6 +1,0 @@
-adapter	status	n_hits
-PacBio_ULI_adapter	detected	24
-gnl|uv|NGB00973.1:1-35	detected	339
-PacBio_ULI_adapter	discard	21
-gnl|uv|NGB00973.1:1-35	trim_l	15
-gnl|uv|NGB00973.1:1-35	trim_r	39
