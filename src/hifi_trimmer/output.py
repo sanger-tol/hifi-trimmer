@@ -1,6 +1,7 @@
 import bgzip
 import csv
 import polars as pl
+import polars.selectors as cs
 import pysam
 from hifi_trimmer.utils import trim_positions, format_fasta_record
 
@@ -23,11 +24,49 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
     )
 
 
-def write_summary(hits: pl.LazyFrame) -> pl.LazyFrame:
-    return (
-        hits.group_by("sseqid", maintain_order=True)
+def write_summary(blast: pl.LazyFrame, hits: pl.LazyFrame) -> pl.LazyFrame:
+    blast_summary = (
+        blast.with_columns(status=pl.lit("detected"))
+        .group_by(["sseqid", "status"])
+        .len("n_hits")
+        .rename({"sseqid": "adapter"})
+    )
+
+    hit_summary = (
+        hits.unpivot(
+            cs.by_name(["discard", "trim_l", "trim_r"]),
+            index=~cs.by_name(["discard", "trim_l", "trim_r"]),
+            variable_name="status",
+        )
+        .filter(pl.col("value"))
+        .group_by(["sseqid", "status"])
         .len(name="n_hits")
         .rename({"sseqid": "adapter"})
+    )
+
+    return pl.concat([blast_summary, hit_summary]).sort(by=["status", "adapter"])
+
+
+def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
+    return hits.select(
+        [
+            "qseqid",
+            "sseqid",
+            "pident",
+            "length",
+            "mismatch",
+            "gapopen",
+            "qstart",
+            "qend",
+            "sstart",
+            "send",
+            "evalue",
+            "bitscore",
+            "read_length",
+            "discard",
+            "trim_l",
+            "trim_r",
+        ]
     )
 
 

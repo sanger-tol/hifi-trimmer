@@ -1,6 +1,11 @@
 import click
 import re
-from hifi_trimmer.output import create_bed, filter_bam_with_bed, write_summary
+from hifi_trimmer.output import (
+    create_bed,
+    filter_bam_with_bed,
+    write_summary,
+    write_hits,
+)
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
@@ -52,7 +57,9 @@ def cli():
     default=False,
     is_flag=True,
     type=bool,
-    help="Write the hits identified using the given adapter specifications to TSV",
+    help="""Write the hits identified using the given adapter specifications to TSV. The format is
+    standard BLAST outfmt 6 with the following extra columns: read_length, discard (bool), trim_l (bool), trim_r (bool)
+    """,
 )
 @click.option(
     "--no-summary",
@@ -72,10 +79,11 @@ def process_blast(
 ):
     """Processes the input blastout file according to the adapter yaml key.
 
-    BLASTOUT: tabular file resulting from BLAST with -outfmt "6 std qlen". If the qlen column
+    BLASTOUT: tabular file resulting from a BLAST query of a readset against a BLAST
+    database of adapter sequences, run with -outfmt "6 std qlen". If the qlen column
     is missing, lengths can be calculated by passing the --bam option.
 
-    ADAPTER_YAML: yaml file contaning a list with the following fields per adapters:
+    ADAPTER_YAML: yaml file containing a list with the following fields per adapter:
 
     \b
     - name: (name of adapter. can be a regular expression)
@@ -88,7 +96,8 @@ def process_blast(
       end_length: int (minimum match length requred to identify adapter in end window)
 
     Output:
-    By default, writes BED to standard output. This can be redirected with the -o/--output option.
+    By default, writes BED to [prefix].bed, and a summary file with counts of adapter hits
+    detected and filtered to [prefix].summary. 
     """
     adapters = read_adapter_yaml(adapter_yaml)
     blast = read_blast(blastout, bam)
@@ -109,10 +118,12 @@ def process_blast(
         prefix = re.sub("\\.blastout.*$", "", blastout.name)
 
     if hits_flag:
-        hits.collect().write_csv(prefix + ".hits", separator="\t", include_header=False)
+        write_hits(hits).collect().write_csv(
+            prefix + ".hits", separator="\t", include_header=False
+        )
 
     if not no_summary:
-        write_summary(hits).collect().write_csv(
+        write_summary(blast, hits).collect().write_csv(
             prefix + ".summary", separator="\t", include_header=True
         )
 
@@ -129,7 +140,9 @@ def filter_bam(bed, bam, outfile):
     by blastout_to_bed and write to a bgzipped fasta file.
 
     BAM: BAM file in which to filter reads
+
     BED: BED file describing regions of the read set to exclude.
+    
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
     filters = filter_bam_with_bed(outfile, bam, bed)
