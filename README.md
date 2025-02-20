@@ -15,7 +15,7 @@ to use additional CPUs available to increase processing and compression speed.
 ## Installation
 
 ```
-git clone git@github.com:prototaxites/hifi-trimmer.git
+git clone git@github.com:sanger-tol/hifi-trimmer.git
 cd hifi-trimmer
 pip install .
 ```
