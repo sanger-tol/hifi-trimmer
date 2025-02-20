@@ -92,20 +92,28 @@ Options:
 First, BLAST your reads against an adapter database:
 
 ```
-blast -query <(samtools fasta /path/to/bam) -db /path/to/adapter/blast/db -reward 1 -penalty -5 -gapopen 3 -gapextend 3 -dust no -soft_masking true -evalue 700 -searchsp 1750000000000 -outfmt "6 std qlen" | bgzip > blastout.gz
+blastn -query <(samtools fasta /path/to/bam) \
+  -db /path/to/adapter/blast/db \
+  -reward 1 -penalty -5 -gapopen 3 -gapextend 3 \
+  -dust no -soft_masking true -evalue 700 \
+  -searchsp 1750000000000 \
+  -outfmt "6 std qlen" |\
+  bgzip > blastout.gz
 ```
 
-To create a BED file, you then need to create a YAML file describing the actions to take for each adapter:
+To create a BED file, you then need to create a YAML file describing the actions to take for each adapter. The adapter name
+can be a regular expression, but note that each adapter name in the BLAST file must match only one entry in
+the YAML.
 
 ```
-- adapter: "^NGB00972"     // regular expression matching adapter names
-  discard_middle: True     // discard read if adapter is found in the middle
-  discard_end: False       // discard read if adapter found at end
-  trim_end: True           // trim read if adapter is found at end (overridden by discard choice)
-  middle_pident: 95        // minimum percent identity for a match in the middle of the read
-  middle_length: 44        // minimum match length for a match in the middle of the read
-  end_pident: 90           // minimum percent identity for a match at the end of the read
-  end_length: 18           // minimum match length for a match at the end of the read
+- adapter: "^NGB00972"  // regular expression matching adapter names
+  discard_middle: True  // discard read if adapter is found in the middle
+  discard_end: False    // discard read if adapter found at end
+  trim_end: True        // trim read if adapter is found at end (overridden by discard choice)
+  middle_pident: 95     // minimum percent identity for a match in the middle of the read
+  middle_length: 44     // minimum match length for a match in the middle of the read
+  end_pident: 90        // minimum percent identity for a match at the end of the read
+  end_length: 18        // minimum match length for a match at the end of the read
 ```
 
 Then run `blastout_to_bed` to generate a BED file:
