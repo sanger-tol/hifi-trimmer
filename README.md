@@ -8,9 +8,12 @@ the primary output of the tool is a BED file that describes the region of each r
 excluded. The tool also includes a command to filter the reads to disk using the produced
 BED file.
 
-Although there is no explicit option to set the number of threads, both the polars backend
-for BLAST file processing and the bgzip backend for writing filtered FASTA files are able
-to use additional CPUs available to increase processing and compression speed.
+The polars backend for BLAST file processing should respect the number of cores set 
+by your scheduler; however, if this is not the case the number of threads used can be
+adjusted by setting the environment variable `POLARS_MAX_THREADS=int` before running the
+software. The number of threads used by the  bgzip backend for writing compressed 
+BED files and the filtered FASTA files can be adjusted using the command-line option
+`--threads`.
 
 ## Installation
 
