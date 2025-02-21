@@ -28,6 +28,20 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
 def write_summary(
     blast: pl.LazyFrame, hits: pl.LazyFrame, actions: pl.LazyFrame
 ) -> pl.LazyFrame:
+    """
+    Takes the raw BLAST table, the BLAST table filtered for "valid" hits
+    using criteria from the YAML, and the per-read "actions" table,
+    and returns a dictionary with a summary about the adapter removal process:
+
+    detected: how many hits per adapter detected in the raw BLAST output
+    hits: for each adapter and action, the following stats:
+        - number of blast hits
+        - number of reads where this was the best hit
+        - number of bases removed
+    total_reads_discarded: total number of reads discarded
+    total_reads_trimmed: total number of reads trimmed
+    total_bases_removed: total length of removed bases
+    """
     blast_summary = (
         blast.group_by("sseqid")
         .len("n_hits")
@@ -58,22 +72,39 @@ def write_summary(
             .otherwise(pl.lit(0))
         )
         .group_by(["sseqid", "action"])
-        .agg(bases_removed=pl.col("bases").sum())
+        .agg(n_reads = pl.col("sseqid").len(),
+             bases_removed=pl.col("bases").sum())
         .rename({"sseqid": "adapter"})
     )
 
     hit_actions_summary = (
         hit_summary.join(actions_summary, how="left", on=["adapter", "action"])
-        .with_columns(bases_removed=pl.col("bases_removed").fill_null(strategy="zero"))
+        .with_columns(
+            n_reads=pl.col("n_reads").fill_null(strategy="zero"),
+            bases_removed=pl.col("bases_removed").fill_null(strategy="zero"))
         .sort(["adapter", "action"])
         .collect()
     )
 
     n_bases_removed = hit_actions_summary["bases_removed"].sum()
+    n_reads_discarded = (hit_actions_summary
+        .filter(pl.col("action") == "discard")
+        ["n_reads"].sum()
+    )
+
+    n_reads_trimmed = (actions
+        .filter(pl.col("action").str.contains("trim"))
+        .select(len = pl.col("qseqid").unique().len())
+        .collect()["len"].to_list()[0]
+    )
+
+    print(n_reads_trimmed)
 
     return {
         "detections": blast_summary,
         "hits": hit_actions_summary.to_dicts(),
+        "total_reads_discarded": n_reads_discarded,
+        "total_reads_trimmed": n_reads_trimmed,
         "total_bases_removed": n_bases_removed,
     }
 

@@ -14,20 +14,25 @@
             "adapter": "PacBio_ULI_adapter",
             "action": "discard",
             "n_hits": 21,
+            "n_reads": 1,
             "bases_removed": 13979
         },
         {
             "adapter": "gnl|uv|NGB00973.1:1-35",
             "action": "trim_l",
             "n_hits": 15,
+            "n_reads": 2,
             "bases_removed": 300
         },
         {
             "adapter": "gnl|uv|NGB00973.1:1-35",
             "action": "trim_r",
             "n_hits": 39,
+            "n_reads": 2,
             "bases_removed": 300
         }
     ],
+    "total_reads_discarded": 1,
+    "total_reads_trimmed": 3,
     "total_bases_removed": 14579
 }
