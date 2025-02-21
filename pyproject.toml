@@ -1,8 +1,20 @@
 [project]
 name = "hifi_trimmer"
 version = "0.9.0"
-description = "Add your description here"
+authors = [
+  { name="Jim Downie", email="jd42@sanger.ac.uk" },
+]
+description = """
+hifi_trimmer is a tool for filtering and trimming extraneous adapter hits from a 
+HiFi read set using a BLAST search.
+"""
 readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
 requires-python = ">=3.10, <3.13"
 dependencies = [
     "bgzip>=0.5.0",
@@ -11,6 +23,10 @@ dependencies = [
     "pysam>=0.23.0",
     "pyyaml>=6.0.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/sanger-tol/hifi-trimmer/"
+Issues = "https://github.com/sanger-tol/hifi-trimmer/issues"
 
 [project.scripts]
 hifi_trimmer = "hifi_trimmer.hifi_trimmer:cli"
