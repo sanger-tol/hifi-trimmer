@@ -26,14 +26,15 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
 
 
 def write_summary(
-    blast: pl.LazyFrame, hits: pl.LazyFrame, bed: pl.LazyFrame
+    blast: pl.LazyFrame, hits: pl.LazyFrame, actions: pl.LazyFrame
 ) -> pl.LazyFrame:
     blast_summary = (
         blast.group_by("sseqid")
         .len("n_hits")
         .rename({"sseqid": "adapter"})
+        .sort("adapter")
         .collect()
-        .to_dict(as_series=False)
+        .to_dicts()
     )
 
     hit_summary = (
@@ -46,19 +47,34 @@ def write_summary(
         .group_by(["sseqid", "action"])
         .len(name="n_hits")
         .rename({"sseqid": "adapter"})
-        .sort(["adapter", "action"])
-        .collect()
-        .to_dict(as_series=False)
     )
 
-    n_bases_removed = (
-        bed.select(n_bases=pl.col("end") - pl.col("start")).collect()["n_bases"].sum()
+    actions_summary = (
+        actions.with_columns(
+            bases=pl.when(pl.col("action").str.contains("discard"))
+            .then(pl.col("read_length").first())
+            .when(pl.col("action").str.contains("trim"))
+            .then(pl.lit(150))
+            .otherwise(pl.lit(0))
+        )
+        .group_by(["sseqid", "action"])
+        .agg(bases_removed=pl.col("bases").sum())
+        .rename({"sseqid": "adapter"})
     )
+
+    hit_actions_summary = (
+        hit_summary.join(actions_summary, how="left", on=["adapter", "action"])
+        .with_columns(bases_removed=pl.col("bases_removed").fill_null(strategy="zero"))
+        .sort(["adapter", "action"])
+        .collect()
+    )
+
+    n_bases_removed = hit_actions_summary["bases_removed"].sum()
 
     return {
         "detections": blast_summary,
-        "hits": hit_summary,
-        "bases_removed": n_bases_removed,
+        "hits": hit_actions_summary.to_dicts(),
+        "total_bases_removed": n_bases_removed,
     }
 
 

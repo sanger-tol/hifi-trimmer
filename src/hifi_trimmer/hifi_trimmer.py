@@ -136,7 +136,7 @@ def process_blast(
 
     if not no_summary:
         with open(prefix + ".summary.json", "w") as f:
-            summary = write_summary(blast, hits, bed)
+            summary = write_summary(blast, hits, actions)
             json.dump(summary, f, indent=4)
 
     with open(prefix + ".bed.gz", "wb") as f:
