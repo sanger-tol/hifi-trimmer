@@ -62,10 +62,11 @@ Options:
   -hf, --hits                     Write the hits identified using the given
                                   adapter specifications to TSV. The format is
                                   standard BLAST outfmt 6 with the following
-                                  extra columns: read_length, discard (bool),
-                                  trim_l (bool), trim_r (bool)
-  --no-summary BOOLEAN            Skip writing a summary TSV with the number
+                                  extra columns: read_length (int), discard
+                                  (bool), trim_l (bool), trim_r (bool)
+  --no-summary                    Skip writing a summary TSV with the number
                                   of hits for each adapter
+  -t, --threads INTEGER           Number of threads to use for compression
   --help                          Show this message and exit.
 ```
 
@@ -84,7 +85,8 @@ Usage: hifi_trimmer filter_bam [OPTIONS] BAM BED OUTFILE
   OUTFILE: File to write the filtered reads to (bgzipped).
 
 Options:
-  --help  Show this message and exit.
+  -t, --threads INTEGER  Number of threads to use for compression
+  --help                 Show this message and exit.
 ```
 
 ## Example
