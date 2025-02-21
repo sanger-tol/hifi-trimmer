@@ -108,8 +108,9 @@ def process_blast(
       end_length: int (minimum match length requred to identify adapter in end window)
 
     Output:
-    By default, writes BED to [prefix].bed, and a summary file with counts of adapter hits
-    detected and filtered to [prefix].summary.
+    By default, writes bgzipped BED to [prefix].bed.gz, and a JSON summary file with raw counts
+    of adapter hits detected, counts identified after processing, and the total length of
+    removed sequences per adapter to [prefix].summary.json.
     """
     adapters = read_adapter_yaml(adapter_yaml)
     blast = read_blast(blastout, bam)
