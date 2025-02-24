@@ -1,0 +1,16 @@
+- adapter: "NGB00973"
+  discard_middle: True
+  discard_end: False
+  trim_end: True
+  middle_pident: 95
+  middle_length: 34
+  end_pident: 90
+  end_length: 18
+- adapter: "PacBio_ULI_adapter"
+  discard_middle: True
+  discard_end: True
+  trim_end: False
+  middle_pident: 95
+  middle_length: 20
+  end_pident: 90
+  end_length: 20

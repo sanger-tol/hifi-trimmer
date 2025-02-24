@@ -1,5 +1,5 @@
 import bgzip
-import csv
+import click
 import polars as pl
 import polars.selectors as cs
 import pysam
@@ -42,71 +42,77 @@ def write_summary(
     total_reads_trimmed: total number of reads trimmed
     total_bases_removed: total length of removed bases
     """
-    blast_summary = (
-        blast.group_by("sseqid")
-        .len("n_hits")
-        .rename({"sseqid": "adapter"})
-        .sort("adapter")
-        .collect()
-        .to_dicts()
-    )
-
-    hit_summary = (
-        hits.unpivot(
-            cs.by_name(["discard", "trim_l", "trim_r"]),
-            index=~cs.by_name(["discard", "trim_l", "trim_r"]),
-            variable_name="action",
-        )
-        .filter(pl.col("value"))
-        .group_by(["sseqid", "action"])
-        .len(name="n_hits")
-        .rename({"sseqid": "adapter"})
-    )
-
-    actions_summary = (
-        actions.with_columns(
-            bases=pl.when(pl.col("action").str.contains("discard"))
-            .then(pl.col("read_length").first())
-            .when(pl.col("action").str.contains("trim"))
-            .then(pl.lit(150))
-            .otherwise(pl.lit(0))
-        )
-        .group_by(["sseqid", "action"])
-        .agg(n_reads=pl.col("sseqid").len(), bases_removed=pl.col("bases").sum())
-        .rename({"sseqid": "adapter"})
-    )
-
-    hit_actions_summary = (
-        hit_summary.join(actions_summary, how="left", on=["adapter", "action"])
-        .with_columns(
-            n_reads=pl.col("n_reads").fill_null(strategy="zero"),
-            bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
-        )
-        .sort(["adapter", "action"])
-        .collect()
-    )
-
-    n_bases_removed = hit_actions_summary["bases_removed"].sum()
-    n_reads_discarded = hit_actions_summary.filter(pl.col("action") == "discard")[
-        "n_reads"
-    ].sum()
-
-    n_reads_trimmed = (
-        actions.filter(pl.col("action").str.contains("trim"))
-        .select(len=pl.col("qseqid").unique().len())
-        .collect()["len"]
-        .to_list()[0]
-    )
-
-    print(n_reads_trimmed)
-
-    return {
-        "detections": blast_summary,
-        "hits": hit_actions_summary.to_dicts(),
-        "total_reads_discarded": n_reads_discarded,
-        "total_reads_trimmed": n_reads_trimmed,
-        "total_bases_removed": n_bases_removed,
+    summary = {
+        "detections": [],
+        "hits": [],
+        "total_reads_discarded": 0,
+        "total_reads_trimmed": 0,
+        "total_bases_removed": 0,
     }
+
+    if blast is not None:
+        summary["detections"] = (
+            blast.group_by("sseqid")
+            .len("n_hits")
+            .rename({"sseqid": "adapter"})
+            .sort("adapter")
+            .collect(new_streaming=True)
+            .to_dicts()
+        )
+
+        if not hits.limit(1).collect().is_empty():
+            hit_summary = (
+                hits.unpivot(
+                    cs.by_name(["discard", "trim_l", "trim_r"]),
+                    index=~cs.by_name(["discard", "trim_l", "trim_r"]),
+                    variable_name="action",
+                )
+                .filter(pl.col("value"))
+                .group_by(["sseqid", "action"])
+                .len(name="n_hits")
+                .rename({"sseqid": "adapter"})
+            )
+
+            actions_summary = (
+                actions.with_columns(
+                    bases=pl.when(pl.col("action").str.contains("discard"))
+                    .then(pl.col("read_length").first())
+                    .when(pl.col("action").str.contains("trim"))
+                    .then(pl.lit(150))
+                    .otherwise(pl.lit(0))
+                )
+                .group_by(["sseqid", "action"])
+                .agg(
+                    n_reads=pl.col("sseqid").len(), bases_removed=pl.col("bases").sum()
+                )
+                .rename({"sseqid": "adapter"})
+            )
+
+            hit_actions_summary = (
+                hit_summary.join(actions_summary, how="left", on=["adapter", "action"])
+                .with_columns(
+                    n_reads=pl.col("n_reads").fill_null(strategy="zero"),
+                    bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
+                )
+                .sort(["adapter", "action"])
+                .collect(new_streaming=True)
+            )
+
+            summary["hits"] = hit_actions_summary.to_dicts()
+
+            summary["total_bases_removed"] = hit_actions_summary["bases_removed"].sum()
+            summary["total_reads_discarded"] = hit_actions_summary.filter(
+                pl.col("action") == "discard"
+            )["n_reads"].sum()
+
+            summary["total_reads_trimmed"] = (
+                actions.filter(pl.col("action").str.contains("trim"))
+                .select(len=pl.col("qseqid").unique().len())
+                .collect(new_streaming=True)["len"]
+                .to_list()[0]
+            )
+
+    return summary
 
 
 def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
@@ -129,23 +135,32 @@ def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
             "trim_l",
             "trim_r",
         ]
-    )
+    ).collect(new_streaming=True)
 
 
 def filter_bam_with_bed(outfile, bam, bed, threads):
-    ## read BED as dictionary
-
-    with bgzip.BGZipReader(bed, num_threads=threads) as file:
-        filters = csv.DictReader(
-            file.read().tobytes().decode("utf-8").splitlines(),
-            delimiter="\t",
-            fieldnames=["read", "start", "end", "reason"],
+    try:
+        bed_df = pl.read_csv(
+            bed,
+            separator="\t",
+            has_header=False,
+            schema={
+                "read": pl.String,
+                "start": pl.Int64,
+                "end": pl.Int64,
+                "reason": pl.String,
+            },
         )
+        filters = bed_df.iter_rows(named=True)
+
+        r = next(filters, None)
+    except:
+        click.echo("WARN: BED file is empty! Reads will be streamed as-is.")
+        filters = iter([])
+        r = next(filters, None)
 
     with bgzip.BGZipWriter(outfile, num_threads=threads) as out:
         with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
-            ## initialise first BED record
-            r = next(filters, None)
             ## Process: for each read in the BAM, check if it matches the current BED record.
             ## If yes, pull BED records until we reach a record for the next read.
             ## Then trim the sequence using the records pulled and write to fasta.

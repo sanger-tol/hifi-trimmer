@@ -12,7 +12,7 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
         .group_by("sseqid")
         .len()
         .filter(pl.col("len") > 1)
-        .collect()["sseqid"]
+        .collect(new_streaming=True)["sseqid"]
         .to_list()
     )
 

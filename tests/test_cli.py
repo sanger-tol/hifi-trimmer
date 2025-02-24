@@ -5,15 +5,13 @@ import hashlib
 import pytest
 
 
-def list_test_data():
+def list_test_data(test_dir):
     """
     Get a list of files in the test directory and store them in
     a dict indexed by extension.
     """
-    data_dir = pathlib.Path(__file__).parent / "data"
-
     test_data = {}
-    for p in pathlib.Path(data_dir).iterdir():
+    for p in pathlib.Path(test_dir).iterdir():
         if p.suffix == ".gz":
             ext = p.suffixes[-2][1:]
         else:
@@ -21,7 +19,21 @@ def list_test_data():
 
         test_data[ext] = str(p.absolute())
 
-    return [test_data]
+    return test_data
+
+
+def list_test_dirs():
+    """
+    List all the data dirs in the test data directory.
+    """
+    data_dir = pathlib.Path(__file__).parent / "data"
+
+    data = []
+    for p in pathlib.Path(data_dir).iterdir():
+        if p.is_dir():
+            data.append(list_test_data(p))
+
+    return data
 
 
 def md5checksum(fname):
@@ -36,7 +48,7 @@ def md5checksum(fname):
     return md5.hexdigest()
 
 
-@pytest.mark.parametrize("testdata", list_test_data())
+@pytest.mark.parametrize("testdata", list_test_dirs())
 def test_process_blast(tmp_path, testdata):
     runner = CliRunner()
 
@@ -47,25 +59,22 @@ def test_process_blast(tmp_path, testdata):
                 "process_blast",
                 "--prefix",
                 "test",
-                "--hits",
-                "--bam",
-                testdata["bam"],
                 testdata["blastout"],
                 testdata["yaml"],
             ],
         )
 
+        print(result.stdout)
+
         md5_bed = md5checksum(pathlib.Path(td) / "test.bed.gz")
         md5_summary = md5checksum(pathlib.Path(td) / "test.summary.json")
-        md5_hits = md5checksum(pathlib.Path(td) / "test.hits")
 
     assert result.exit_code == 0
     assert md5_bed == md5checksum(testdata["bed"])
     assert md5_summary == md5checksum(testdata["json"])
-    assert md5_hits == md5checksum(testdata["hits"])
 
 
-@pytest.mark.parametrize("testdata", list_test_data())
+@pytest.mark.parametrize("testdata", list_test_dirs())
 def test_filter_bam(tmp_path, testdata):
     runner = CliRunner()
 

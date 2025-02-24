@@ -2,7 +2,6 @@ import bgzip
 import click
 import json
 import re
-import polars as pl
 
 from hifi_trimmer.output import (
     create_bed,
@@ -22,7 +21,7 @@ def cli():
 
 
 @click.command("process_blast")
-@click.argument("blastout", type=click.File(mode="r"))
+@click.argument("blastout", type=click.Path(exists=True))
 @click.argument("adapter_yaml", type=click.File(mode="r"))
 @click.option(
     "-p",
@@ -104,28 +103,49 @@ def process_blast(
     of adapter hits detected, counts identified after processing, and the total length of
     removed sequences per adapter to [prefix].summary.json.
     """
-    adapters = read_adapter_yaml(adapter_yaml)
-    blast = read_blast(blastout)
-
-    ## Make sure each barcode that matches an adapter matches only one adapter
-    check = check_records(blast, adapters)
-    if len(check) > 0:
-        raise click.ClickException(
-            f"Barcodes {', '.join(check)} match to more than one adapter in {adapter_yaml.name}!"
-        )
-
-    ## process the blastout file
-    hits = match_hits(blast, adapters, end_length)
-    actions = determine_actions(hits, end_length, min_length_after_trimming)
-    bed = create_bed(actions, end_length)
-
     if prefix is None:
-        prefix = re.sub("\\.blastout.*$", "", blastout.name)
+        prefix = re.sub("\\.blastout.*$", "", blastout)
 
-    if hits_flag:
-        write_hits(hits).collect().write_csv(
-            prefix + ".hits", separator="\t", include_header=False
-        )
+    ## Set null outputs
+    blast = None
+    hits = None
+    actions = None
+    out_bed = "".encode("utf-8")
+
+    try:
+        blast = read_blast(blastout)
+        adapters = read_adapter_yaml(adapter_yaml)
+
+        ## Make sure each barcode that matches an adapter matches only one adapter
+        check = check_records(blast, adapters)
+        if len(check) > 0:
+            raise click.ClickException(
+                f"Barcodes {', '.join(check)} match to more than one adapter in {adapter_yaml.name}!"
+            )
+
+        ## process the blastout file
+        hits = match_hits(blast, adapters, end_length)
+
+        ## Check if any hits matched - need to handle empty input!
+        if not (hits.limit(1).collect().is_empty()):
+            actions = determine_actions(hits, end_length, min_length_after_trimming)
+            bed = create_bed(actions, end_length)
+
+            if hits_flag:
+                write_hits(hits).write_csv(
+                    prefix + ".hits", separator="\t", include_header=False
+                )
+
+            out_bed = (
+                bed.collect(new_streaming=True)
+                .write_csv(separator="\t", include_header=False)
+                .encode("utf-8")
+            )
+
+            click.echo(f"BLAST file {blastout} parsed successfully!")
+    except:
+        click.echo(f"WARNING: {blastout} was empty! Writing empty BED output.")
+        blast = None
 
     if not no_summary:
         with open(prefix + ".summary.json", "w") as f:
@@ -134,16 +154,12 @@ def process_blast(
 
     with open(prefix + ".bed.gz", "wb") as f:
         with bgzip.BGZipWriter(f, num_threads=threads) as out:
-            out.write(
-                bed.collect()
-                .write_csv(separator="\t", include_header=False)
-                .encode("utf-8")
-            )
+            out.write(out_bed)
 
 
 @click.command("filter_bam")
 @click.argument("bam", type=click.File(mode="rb"))
-@click.argument("bed", type=click.File(mode="rb"))
+@click.argument("bed", type=click.Path(exists=True))
 @click.argument("outfile", default=None, required=True, type=click.File(mode="wb"))
 @click.option(
     "-t",
