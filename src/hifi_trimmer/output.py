@@ -72,8 +72,7 @@ def write_summary(
             .otherwise(pl.lit(0))
         )
         .group_by(["sseqid", "action"])
-        .agg(n_reads = pl.col("sseqid").len(),
-             bases_removed=pl.col("bases").sum())
+        .agg(n_reads=pl.col("sseqid").len(), bases_removed=pl.col("bases").sum())
         .rename({"sseqid": "adapter"})
     )
 
@@ -81,21 +80,22 @@ def write_summary(
         hit_summary.join(actions_summary, how="left", on=["adapter", "action"])
         .with_columns(
             n_reads=pl.col("n_reads").fill_null(strategy="zero"),
-            bases_removed=pl.col("bases_removed").fill_null(strategy="zero"))
+            bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
+        )
         .sort(["adapter", "action"])
         .collect()
     )
 
     n_bases_removed = hit_actions_summary["bases_removed"].sum()
-    n_reads_discarded = (hit_actions_summary
-        .filter(pl.col("action") == "discard")
-        ["n_reads"].sum()
-    )
+    n_reads_discarded = hit_actions_summary.filter(pl.col("action") == "discard")[
+        "n_reads"
+    ].sum()
 
-    n_reads_trimmed = (actions
-        .filter(pl.col("action").str.contains("trim"))
-        .select(len = pl.col("qseqid").unique().len())
-        .collect()["len"].to_list()[0]
+    n_reads_trimmed = (
+        actions.filter(pl.col("action").str.contains("trim"))
+        .select(len=pl.col("qseqid").unique().len())
+        .collect()["len"]
+        .to_list()[0]
     )
 
     print(n_reads_trimmed)

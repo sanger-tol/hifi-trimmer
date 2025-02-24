@@ -108,7 +108,7 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     pl.struct(["sseqid", "qstart", "qend"]).get(
-                        pl.col("evalue").arg_max()
+                        pl.col("evalue").arg_min()
                     )
                 )
             )

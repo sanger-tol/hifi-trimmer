@@ -2,6 +2,7 @@ import bgzip
 import click
 import json
 import re
+import polars as pl
 
 from hifi_trimmer.output import (
     create_bed,
@@ -30,14 +31,6 @@ def cli():
     required=False,
     type=str,
     help="Output prefix for results. Defaults to the basename of the blastout if not provided.",
-)
-@click.option(
-    "-b",
-    "--bam",
-    default=None,
-    required=False,
-    type=click.File(mode="rb"),
-    help="If blastout file has no read length field, a BAM file of reads to get read lengths",
 )
 @click.option(
     "-ml",
@@ -82,7 +75,6 @@ def process_blast(
     blastout,
     adapter_yaml,
     prefix,
-    bam,
     min_length_after_trimming,
     end_length,
     hits_flag,
@@ -113,7 +105,7 @@ def process_blast(
     removed sequences per adapter to [prefix].summary.json.
     """
     adapters = read_adapter_yaml(adapter_yaml)
-    blast = read_blast(blastout, bam)
+    blast = read_blast(blastout)
 
     ## Make sure each barcode that matches an adapter matches only one adapter
     check = check_records(blast, adapters)
