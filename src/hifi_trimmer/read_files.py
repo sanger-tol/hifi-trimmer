@@ -27,6 +27,7 @@ def read_blast(blast_path: str) -> pl.LazyFrame:
         blast_path,
         has_header=False,
         separator="\t",
+        low_memory=True,
         schema={
             "qseqid": pl.String,
             "sseqid": pl.String,
