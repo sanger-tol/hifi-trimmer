@@ -1,7 +1,9 @@
 import bgzip
 import click
 import json
+import polars as pl
 import re
+
 
 from hifi_trimmer.output import (
     create_bed,
@@ -137,13 +139,13 @@ def process_blast(
                 )
 
             out_bed = (
-                bed.collect(new_streaming=True)
+                bed.collect()
                 .write_csv(separator="\t", include_header=False)
                 .encode("utf-8")
             )
 
             click.echo(f"BLAST file {blastout} parsed successfully!")
-    except:
+    except pl.exceptions.NoDataError:
         click.echo(f"WARNING: {blastout} was empty! Writing empty BED output.")
         blast = None
 

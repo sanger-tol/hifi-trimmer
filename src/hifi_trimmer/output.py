@@ -56,7 +56,7 @@ def write_summary(
             .len("n_hits")
             .rename({"sseqid": "adapter"})
             .sort("adapter")
-            .collect(new_streaming=True)
+            .collect()
             .to_dicts()
         )
 
@@ -95,7 +95,7 @@ def write_summary(
                     bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
                 )
                 .sort(["adapter", "action"])
-                .collect(new_streaming=True)
+                .collect()
             )
 
             summary["hits"] = hit_actions_summary.to_dicts()
@@ -108,7 +108,7 @@ def write_summary(
             summary["total_reads_trimmed"] = (
                 actions.filter(pl.col("action").str.contains("trim"))
                 .select(len=pl.col("qseqid").unique().len())
-                .collect(new_streaming=True)["len"]
+                .collect()["len"]
                 .to_list()[0]
             )
 
@@ -135,7 +135,7 @@ def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
             "trim_l",
             "trim_r",
         ]
-    ).collect(new_streaming=True)
+    ).collect()
 
 
 def filter_bam_with_bed(outfile, bam, bed, threads):

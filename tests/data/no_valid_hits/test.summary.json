@@ -1,0 +1,16 @@
+{
+    "detections": [
+        {
+            "adapter": "PacBio_ULI_adapter",
+            "n_hits": 24
+        },
+        {
+            "adapter": "gnl|uv|NGB00973.1:1-35",
+            "n_hits": 339
+        }
+    ],
+    "hits": [],
+    "total_reads_discarded": 0,
+    "total_reads_trimmed": 0,
+    "total_bases_removed": 0
+}
