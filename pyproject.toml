@@ -17,11 +17,13 @@ license = "MIT"
 license-files = ["LICEN[CS]E*"]
 requires-python = ">=3.10, <3.13"
 dependencies = [
-    "bgzip>=0.5.0",
-    "click>=8.1.8",
-    "polars>=1.23.0",
-    "pysam>=0.23.0",
-    "pyyaml>=6.0.2",
+    "bgzip >= 0.5.0",
+    "click >= 8.1.8",
+    "duckdb ~= 1.2.0",
+    "polars >= 1.23.0",
+    "pyarrow ~= 19.0.0",
+    "pysam >= 0.23.0",
+    "pyyaml >= 6.0.2",
 ]
 
 [project.urls]
@@ -44,4 +46,10 @@ testpaths = [
 [dependency-groups]
 dev = [
     "pytest>=8.3.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
 ]

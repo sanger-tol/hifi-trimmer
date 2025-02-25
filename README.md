@@ -15,6 +15,8 @@ software. The number of threads used by the  bgzip backend for writing compresse
 BED files and the filtered FASTA files can be adjusted using the command-line option
 `--threads`.
 
+*Experimental branch using DuckDB*
+
 ## Installation
 
 ```
