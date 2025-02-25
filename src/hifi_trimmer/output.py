@@ -154,7 +154,7 @@ def filter_bam_with_bed(outfile, bam, bed, threads):
         filters = bed_df.iter_rows(named=True)
 
         r = next(filters, None)
-    except:
+    except pl.exceptions.NoDataError:
         click.echo("WARN: BED file is empty! Reads will be streamed as-is.")
         filters = iter([])
         r = next(filters, None)
