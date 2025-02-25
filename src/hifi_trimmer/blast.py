@@ -45,13 +45,18 @@ def match_hits(
         (pl.col("length") >= pl.col("end_length")),
     )
 
+    adapter_join_df = (
+        blastout.select("sseqid")
+        .unique()
+        .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
+    )
+
     blastout = (
         blastout
         ## match each blast hit with an adapter
         ## below line more efficient but currently can't preserve order
         # .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
-        .join(adapter_df, how="cross", maintain_order="left")
-        .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
+        .join(adapter_join_df, on="sseqid", how="left", maintain_order="left")
         ## Determine which hits to keep and return rows with a "real" hit
         .with_columns(discard=discard, trim_l=trim_l, trim_r=trim_r)
         .filter(pl.any_horizontal("discard", "trim_l", "trim_r"))

@@ -139,7 +139,7 @@ def process_blast(
                 )
 
             out_bed = (
-                bed.collect()
+                bed.collect(streaming=True)
                 .write_csv(separator="\t", include_header=False)
                 .encode("utf-8")
             )
