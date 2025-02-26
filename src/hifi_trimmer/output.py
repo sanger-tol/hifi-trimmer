@@ -70,21 +70,22 @@ def write_summary(
                 .filter(pl.col("value"))
                 .group_by(["sseqid", "action"])
                 .len(name="n_hits")
+                .filter(pl.col("len") > 0)
                 .rename({"sseqid": "adapter"})
             )
 
             actions_summary = (
                 actions.with_columns(
-                    bases=pl.when(pl.col("action").str.contains("discard"))
-                    .then(pl.col("read_length").first())
+                    bases=pl.when(pl.col("action") == "discard")
+                    .then(pl.col("read_length"))
                     .when(pl.col("action").str.contains("trim"))
                     .then(pl.lit(150))
-                    .otherwise(pl.lit(0))
                 )
                 .group_by(["sseqid", "action"])
                 .agg(
                     n_reads=pl.col("sseqid").len(), bases_removed=pl.col("bases").sum()
                 )
+                .filter(pl.col("n_reads") > 0)
                 .rename({"sseqid": "adapter"})
             )
 
