@@ -1,13 +1,14 @@
-import click
+
+from io import TextIOBase
+
 import polars as pl
-import pysam
 import yaml
 
 
-def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
+def read_adapter_yaml(yaml_io: TextIOBase) -> pl.LazyFrame:
     """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
     try:
-        adapters = yaml.safe_load(yaml_path)
+        adapters = yaml.safe_load(yaml_io)
     except yaml.YAMLError as exc:
         print(exc)
 
