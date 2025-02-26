@@ -96,6 +96,7 @@ def write_summary(
                     bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
                 )
                 .sort(["adapter", "action"])
+                .collect()
             )
 
             summary["hits"] = hit_actions_summary.to_dicts()
@@ -106,7 +107,8 @@ def write_summary(
             )["n_reads"].sum()
 
             summary["total_reads_trimmed"] = (
-                actions.filter(pl.col("action").str.contains("trim"))
+                actions.collect()
+                .filter(pl.col("action").str.contains("trim"))
                 .select(len=pl.col("qseqid").unique().len())["len"]
                 .to_list()[0]
             )
