@@ -48,7 +48,9 @@ def match_hits(
     return (
         blastout
         ## match each blast hit with an adapter
-        .join_where(adapter_df, pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter")))
+        .join_where(
+            adapter_df, pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter"))
+        )
         ## Determine which hits to keep and return rows with a "real" hit
         .with_columns(discard=discard, trim_l=trim_l, trim_r=trim_r)
         .filter(pl.any_horizontal("discard", "trim_l", "trim_r"))
@@ -102,7 +104,7 @@ def determine_actions(
             cols=pl.when(pl.col("discard").any())
             .then(
                 pl.concat_list(
-                    pl.struct(["sseqid", "qstart", "qend"]).get(
+                    pl.struct(["idx", "sseqid", "qstart", "qend"]).get(
                         pl.col("evalue").arg_min()
                     )
                 )
@@ -111,12 +113,12 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qend") <= end_length,
                     ).implode(),
                     filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qstart") >= pl.col("read_length") - end_length,
                     ).implode(),
@@ -126,7 +128,7 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qend") <= end_length,
                     )
@@ -136,21 +138,23 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
+                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qstart") >= (pl.col("read_length") - end_length),
                     )
                 )
             )
-            .otherwise(
-                pl.concat_list(
-                    pl.struct(sseqid=pl.lit("none"), qstart=pl.lit(0), qend=pl.lit(0))
-                )
-            )
+            # .otherwise(
+            #     pl.concat_list(
+            #         pl.concat_list(
+            #             pl.struct(sseqid=pl.lit("none"), qstart=pl.lit(0), qend=pl.lit(0))
+            #         )
+            #     )
+            # )
             .explode()  ## this could be tidied
             .explode(),
         )
         .explode("action", "cols")
-        .with_columns(pl.col("cols").struct.field(["sseqid", "qstart", "qend"]))
+        .with_columns(pl.col("cols").struct.field(["idx", "sseqid", "qstart", "qend"]))
+        .sort(pl.col("idx"), maintain_order=True)
     )
-

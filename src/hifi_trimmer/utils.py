@@ -1,14 +1,15 @@
 import polars as pl
 
 
-def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
+def check_records(blast: pl.LazyFrame, adapter_df: pl.DataFrame) -> list:
     """Check if any adapters in a BLAST dataframe match to more than one
     adapter sequence in the YAML file.
     """
     counts = (
         blast.select(pl.col("sseqid"))
         .unique()
-        .join_where(adapters, pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter")))
+        .with_columns(pl.col("sseqid").cast(pl.String))
+        .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
         .group_by("sseqid")
         .len()
         .filter(pl.col("len") > 1)

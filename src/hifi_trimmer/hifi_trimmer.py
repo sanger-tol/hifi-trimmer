@@ -130,7 +130,9 @@ def process_blast(
 
         ## Check if any hits matched - need to handle empty input!
         if not (hits.is_empty()):
-            actions = determine_actions(hits.lazy(), end_length, min_length_after_trimming).collect()
+            actions = determine_actions(
+                hits.lazy(), end_length, min_length_after_trimming
+            ).collect()
             bed = create_bed(actions.lazy(), end_length).collect()
 
             if hits_flag:
@@ -138,10 +140,8 @@ def process_blast(
                     prefix + ".hits", separator="\t", include_header=False
                 )
 
-            out_bed = (
-                bed.collect()
-                .write_csv(separator="\t", include_header=False)
-                .encode("utf-8")
+            out_bed = bed.write_csv(separator="\t", include_header=False).encode(
+                "utf-8"
             )
 
             click.echo(f"BLAST file {blastout} parsed successfully!")

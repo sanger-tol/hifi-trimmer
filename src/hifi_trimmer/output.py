@@ -21,8 +21,7 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
         .when(pl.col("action") == "trim_l")
         .then(pl.lit(end_length))
         .otherwise(pl.lit(0)),
-        reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid"))
-        .sort("qseqid"),
+        reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid")),
     )
 
 
@@ -96,7 +95,6 @@ def write_summary(
                     bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
                 )
                 .sort(["adapter", "action"])
-                .collect()
             )
 
             summary["hits"] = hit_actions_summary.to_dicts()
@@ -108,8 +106,7 @@ def write_summary(
 
             summary["total_reads_trimmed"] = (
                 actions.filter(pl.col("action").str.contains("trim"))
-                .select(len=pl.col("qseqid").unique().len())
-                .collect()["len"]
+                .select(len=pl.col("qseqid").unique().len())["len"]
                 .to_list()[0]
             )
 
