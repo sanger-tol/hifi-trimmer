@@ -99,8 +99,7 @@ def determine_actions(
             .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
             .then(pl.lit(["trim_l"]))
             .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(pl.lit(["trim_r"]))
-            .otherwise(pl.lit(["no_reason"])),
+            .then(pl.lit(["trim_r"])),
             cols=pl.when(pl.col("discard").any())
             .then(
                 pl.concat_list(
@@ -144,13 +143,6 @@ def determine_actions(
                     )
                 )
             )
-            # .otherwise(
-            #     pl.concat_list(
-            #         pl.concat_list(
-            #             pl.struct(sseqid=pl.lit("none"), qstart=pl.lit(0), qend=pl.lit(0))
-            #         )
-            #     )
-            # )
             .explode()  ## this could be tidied
             .explode(),
         )
