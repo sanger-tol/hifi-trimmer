@@ -21,7 +21,8 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
         .when(pl.col("action") == "trim_l")
         .then(pl.lit(end_length))
         .otherwise(pl.lit(0)),
-        reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid")),
+        reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid"))
+        .sort("qseqid"),
     )
 
 
