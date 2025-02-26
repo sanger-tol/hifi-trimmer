@@ -1,4 +1,3 @@
-
 from io import TextIOBase
 
 import polars as pl
@@ -23,6 +22,8 @@ def read_adapter_yaml(yaml_io: TextIOBase) -> pl.LazyFrame:
             "end_pident": pl.Float32,
             "middle_length": pl.Int32,
             "end_length": pl.Int32,
+            "middle_length": pl.Float32,
+            "end_length": pl.Float32,
         },
     ).lazy()
 
