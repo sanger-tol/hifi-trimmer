@@ -61,7 +61,7 @@ def write_summary(
             .to_dicts()
         )
 
-        if not hits.limit(1).collect().is_empty():
+        if not hits.is_empty():
             hit_summary = (
                 hits.unpivot(
                     cs.by_name(["discard", "trim_l", "trim_r"]),
