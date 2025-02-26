@@ -8,7 +8,7 @@ def check_records(blast: pl.LazyFrame, adapters: pl.DataFrame) -> bool:
     counts = (
         blast.select(pl.col("sseqid"))
         .unique()
-        .join_where(adapters, pl.col("sseqid").str.contains(pl.col("adapter")))
+        .join_where(adapters, pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter")))
         .group_by("sseqid")
         .len()
         .filter(pl.col("len") > 1)

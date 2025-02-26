@@ -45,18 +45,14 @@ def match_hits(
         (pl.col("length") >= pl.col("end_length")),
     )
 
-    blastout = (
+    return (
         blastout
         ## match each blast hit with an adapter
-        ## below line more efficient but currently can't preserve order
-        # .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
         .join_where(adapter_df, pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter")))
         ## Determine which hits to keep and return rows with a "real" hit
         .with_columns(discard=discard, trim_l=trim_l, trim_r=trim_r)
         .filter(pl.any_horizontal("discard", "trim_l", "trim_r"))
     )
-
-    return blastout
 
 
 def determine_actions(
@@ -76,7 +72,7 @@ def determine_actions(
 
     ## Calculate read length after trimming (naiively) and then unpivot the trim columns so the
     ## trim section below operates separately for l and r
-    result = (
+    return (
         blastout.with_columns(
             (
                 pl.col("read_length")
@@ -158,4 +154,3 @@ def determine_actions(
         .with_columns(pl.col("cols").struct.field(["sseqid", "qstart", "qend"]))
     )
 
-    return result

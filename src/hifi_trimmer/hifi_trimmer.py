@@ -126,12 +126,12 @@ def process_blast(
             )
 
         ## process the blastout file
-        hits = match_hits(blast, adapters, end_length)
+        hits = match_hits(blast, adapters, end_length).collect()
 
         ## Check if any hits matched - need to handle empty input!
         if not (hits.limit(1).collect().is_empty()):
-            actions = determine_actions(hits, end_length, min_length_after_trimming)
-            bed = create_bed(actions, end_length)
+            actions = determine_actions(hits.lazy(), end_length, min_length_after_trimming).collect()
+            bed = create_bed(actions.lazy(), end_length).collect()
 
             if hits_flag:
                 write_hits(hits).write_csv(
@@ -139,7 +139,7 @@ def process_blast(
                 )
 
             out_bed = (
-                bed.collect(streaming=True)
+                bed.collect()
                 .write_csv(separator="\t", include_header=False)
                 .encode("utf-8")
             )
