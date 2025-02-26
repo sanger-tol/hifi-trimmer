@@ -14,6 +14,7 @@ from hifi_trimmer.output import (
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
+from hifi_trimmer.summary import summarise_blast, summarise_hits, summarise_actions
 
 
 @click.group()
@@ -109,13 +110,14 @@ def process_blast(
         prefix = re.sub("\\.blastout.*$", "", blastout)
 
     ## Set null outputs
-    blast = pl.DataFrame()
-    hits = pl.DataFrame()
-    actions = pl.DataFrame()
+    blast_summary = None
+    hits_summary = None
+    actions_summary = None
     out_bed = "".encode("utf-8")
 
     try:
         blast = read_blast(blastout)
+        blast_summary = summarise_blast(blast)
         adapters = read_adapter_yaml(adapter_yaml)
 
         ## Make sure each barcode that matches an adapter matches only one adapter
@@ -127,12 +129,15 @@ def process_blast(
 
         ## process the blastout file
         hits = match_hits(blast, adapters, end_length).collect()
+        hits_summary = summarise_hits(hits)
 
         ## Check if any hits matched - need to handle empty input!
         if not (hits.is_empty()):
             actions = determine_actions(
                 hits.lazy(), end_length, min_length_after_trimming
             ).collect()
+            actions_summary = summarise_actions(actions)
+
             bed = create_bed(actions.lazy(), end_length)
 
             if hits_flag:
@@ -141,8 +146,7 @@ def process_blast(
                 )
 
             out_bed = (
-                bed
-                .collect()
+                bed.collect()
                 .write_csv(separator="\t", include_header=False)
                 .encode("utf-8")
             )
@@ -154,7 +158,7 @@ def process_blast(
 
     if not no_summary:
         with open(prefix + ".summary.json", "w") as f:
-            summary = write_summary(blast, hits.lazy(), actions.lazy())
+            summary = write_summary(blast_summary, hits_summary, actions_summary)
             json.dump(summary, f, indent=4)
 
     with open(prefix + ".bed.gz", "wb") as f:
