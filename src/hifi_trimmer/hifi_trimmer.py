@@ -129,7 +129,7 @@ def process_blast(
         hits = match_hits(blast, adapters, end_length).collect()
 
         ## Check if any hits matched - need to handle empty input!
-        if not (hits.limit(1).collect().is_empty()):
+        if not (hits.is_empty()):
             actions = determine_actions(hits.lazy(), end_length, min_length_after_trimming).collect()
             bed = create_bed(actions.lazy(), end_length).collect()
 
