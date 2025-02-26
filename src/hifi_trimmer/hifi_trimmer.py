@@ -141,8 +141,9 @@ def process_blast(
                 )
 
             out_bed = (
-                bed.write_csv(separator="\t", include_header=False)
+                bed
                 .collect()
+                .write_csv(separator="\t", include_header=False)
                 .encode("utf-8")
             )
 
