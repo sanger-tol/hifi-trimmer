@@ -109,9 +109,9 @@ def process_blast(
         prefix = re.sub("\\.blastout.*$", "", blastout)
 
     ## Set null outputs
-    blast = None
-    hits = None
-    actions = None
+    blast = pl.DataFrame()
+    hits = pl.DataFrame()
+    actions = pl.DataFrame()
     out_bed = "".encode("utf-8")
 
     try:
@@ -133,15 +133,17 @@ def process_blast(
             actions = determine_actions(
                 hits.lazy(), end_length, min_length_after_trimming
             ).collect()
-            bed = create_bed(actions.lazy(), end_length).collect()
+            bed = create_bed(actions.lazy(), end_length)
 
             if hits_flag:
                 write_hits(hits).write_csv(
                     prefix + ".hits", separator="\t", include_header=False
                 )
 
-            out_bed = bed.write_csv(separator="\t", include_header=False).encode(
-                "utf-8"
+            out_bed = (
+                bed.write_csv(separator="\t", include_header=False)
+                .collect()
+                .encode("utf-8")
             )
 
             click.echo(f"BLAST file {blastout} parsed successfully!")
@@ -151,7 +153,7 @@ def process_blast(
 
     if not no_summary:
         with open(prefix + ".summary.json", "w") as f:
-            summary = write_summary(blast, hits, actions)
+            summary = write_summary(blast, hits.lazy(), actions.lazy())
             json.dump(summary, f, indent=4)
 
     with open(prefix + ".bed.gz", "wb") as f:
