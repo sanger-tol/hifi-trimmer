@@ -11,7 +11,16 @@ def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     except yaml.YAMLError as exc:
         print(exc)
 
-    return pl.DataFrame(adapters).lazy()
+    return pl.DataFrame(adapters, schema = {
+        "adapter": pl.String,
+        "discard_middle": pl.Boolean,
+        "discard_end": pl.Boolean,
+        "trim_end": pl.Boolean,
+        "middle_pident": pl.Float32,
+        "end_pident": pl.Float32,
+        "middle_length": pl.UInt8,
+        "end_length": pl.UInt8
+    }).lazy()
 
 
 def read_blast(blast_path: str) -> pl.LazyFrame:
