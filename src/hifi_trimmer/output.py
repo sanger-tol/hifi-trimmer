@@ -26,7 +26,9 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
 
 
 def write_summary(
-    blast: pl.LazyFrame, hits: pl.LazyFrame, actions: pl.LazyFrame
+    blast_summary: pl.DataFrame,
+    hits_summary: pl.DataFrame,
+    actions_summary: pl.LazyFrame,
 ) -> pl.LazyFrame:
     """
     Takes the raw BLAST table, the BLAST table filtered for "valid" hits
@@ -45,73 +47,26 @@ def write_summary(
     summary = {
         "detections": [],
         "hits": [],
+        "actions": [],
         "total_reads_discarded": 0,
         "total_reads_trimmed": 0,
         "total_bases_removed": 0,
     }
 
-    if blast is not None:
-        summary["detections"] = (
-            blast.group_by("sseqid")
-            .len("n_hits")
-            .rename({"sseqid": "adapter"})
-            .sort("adapter")
-            .collect()
-            .to_dicts()
-        )
+    if blast_summary is not None:
+        summary["detections"] = blast_summary.to_dicts()
 
-        if not hits.is_empty():
-            hit_summary = (
-                hits.unpivot(
-                    cs.by_name(["discard", "trim_l", "trim_r"]),
-                    index=~cs.by_name(["discard", "trim_l", "trim_r"]),
-                    variable_name="action",
-                )
-                .filter(pl.col("value"))
-                .group_by(["sseqid", "action"])
-                .len(name="n_hits")
-                .filter(pl.col("len") > 0)
-                .rename({"sseqid": "adapter"})
-            )
+        if hits_summary is not None and not hits_summary.is_empty():
+            summary["hits"] = hits_summary.to_dicts()
+            summary["actions"] = actions_summary.to_dicts()
 
-            actions_summary = (
-                actions.with_columns(
-                    bases=pl.when(pl.col("action") == "discard")
-                    .then(pl.col("read_length"))
-                    .when(pl.col("action").str.contains("trim"))
-                    .then(pl.lit(150))
-                )
-                .group_by(["sseqid", "action"])
-                .agg(
-                    n_reads=pl.col("sseqid").len(), bases_removed=pl.col("bases").sum()
-                )
-                .filter(pl.col("n_reads") > 0)
-                .rename({"sseqid": "adapter"})
-            )
-
-            hit_actions_summary = (
-                hit_summary.join(actions_summary, how="left", on=["adapter", "action"])
-                .with_columns(
-                    n_reads=pl.col("n_reads").fill_null(strategy="zero"),
-                    bases_removed=pl.col("bases_removed").fill_null(strategy="zero"),
-                )
-                .sort(["adapter", "action"])
-                .collect()
-            )
-
-            summary["hits"] = hit_actions_summary.to_dicts()
-
-            summary["total_bases_removed"] = hit_actions_summary["bases_removed"].sum()
-            summary["total_reads_discarded"] = hit_actions_summary.filter(
+            summary["total_bases_removed"] = actions_summary["bases_removed"].sum()
+            summary["total_reads_discarded"] = actions_summary.filter(
                 pl.col("action") == "discard"
             )["n_reads"].sum()
-
-            summary["total_reads_trimmed"] = (
-                actions.collect()
-                .filter(pl.col("action").str.contains("trim"))
-                .select(len=pl.col("qseqid").unique().len())["len"]
-                .to_list()[0]
-            )
+            summary["total_reads_trimmed"] = actions_summary.filter(
+                pl.col("action") == "trim"
+            )["n_reads"].sum()
 
     return summary
 
