@@ -29,7 +29,7 @@ def write_summary(
     blast_summary: pl.DataFrame,
     hits_summary: pl.DataFrame,
     actions_summary: pl.LazyFrame,
-) -> pl.LazyFrame:
+) -> dict:
     """
     Takes the raw BLAST table, the BLAST table filtered for "valid" hits
     using criteria from the YAML, and the per-read "actions" table,
@@ -96,7 +96,7 @@ def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
     ).collect()
 
 
-def filter_bam_with_bed(outfile, bam, bed, threads):
+def filter_bam_with_bed(outfile: str, bam: click.File, bed: str, threads: int) -> iter:
     try:
         bed_df = pl.read_csv(
             bed,

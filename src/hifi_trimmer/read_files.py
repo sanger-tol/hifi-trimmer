@@ -21,8 +21,8 @@ def read_adapter_yaml(yaml_io: TextIOBase) -> pl.LazyFrame:
             "trim_end": pl.Boolean,
             "middle_pident": pl.Float32,
             "end_pident": pl.Float32,
-            "middle_length": pl.UInt8,
-            "end_length": pl.UInt8,
+            "middle_length": pl.Int32,
+            "end_length": pl.Int32,
         },
     ).lazy()
 
