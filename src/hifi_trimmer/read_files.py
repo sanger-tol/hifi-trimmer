@@ -35,40 +35,38 @@ def read_blast(blast_path: str) -> pl.LazyFrame:
     Returns with the columns qseqid, sseqid, pident, length, qstart, qend, and evalue.
     qstart and qend are sorted to ignore information about strand.
     """
-    blastout = (
-        pl.scan_csv(
-            blast_path,
-            has_header=False,
-            separator="\t",
-            schema={
-                "qseqid": pl.Categorical(ordering="physical"),
-                "sseqid": pl.Categorical,
-                "pident": pl.Float32,
-                "length": pl.UInt8,
-                "mismatch": pl.UInt8,
-                "gapopen": pl.UInt8,
-                "qstart": pl.UInt16,
-                "qend": pl.UInt16,
-                "sstart": pl.UInt8,
-                "send": pl.UInt8,
-                "evalue": pl.Float32,
-                "bitscore": pl.Float32,
-                "read_length": pl.UInt16,
-            },
-        )
-        .with_row_index(name="idx")
-        .with_columns(
-            pl.col("qseqid").set_sorted(),  ## Set sorted for faster grouping operations
-            pl.when(pl.col("qstart") > pl.col("qend"))
-            .then(
-                pl.struct(
-                    start="qend",
-                    end="qstart",
-                )
+    blastout = pl.scan_csv(
+        blast_path,
+        has_header=False,
+        separator="\t",
+        schema={
+            "qseqid": pl.String,
+            "sseqid": pl.Categorical,
+            "pident": pl.Float32,
+            "length": pl.UInt8,
+            "mismatch": pl.UInt8,
+            "gapopen": pl.UInt8,
+            "qstart": pl.UInt16,
+            "qend": pl.UInt16,
+            "sstart": pl.UInt8,
+            "send": pl.UInt8,
+            "evalue": pl.Float32,
+            "bitscore": pl.Float32,
+            "read_length": pl.UInt16,
+        },
+    ).with_columns(
+        pl.col("qseqid")
+        .cast(pl.Categorical)
+        .set_sorted(),  ## Set sorted for faster grouping operations
+        pl.when(pl.col("qstart") > pl.col("qend"))
+        .then(
+            pl.struct(
+                start="qend",
+                end="qstart",
             )
-            .otherwise(pl.struct(["qstart", "qend"]))
-            .struct.field(["qstart", "qend"]),
         )
+        .otherwise(pl.struct(["qstart", "qend"]))
+        .struct.field(["qstart", "qend"]),
     )
 
     return blastout
