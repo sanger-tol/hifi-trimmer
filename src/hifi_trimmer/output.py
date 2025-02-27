@@ -1,7 +1,6 @@
 import bgzip
 import click
 import polars as pl
-import polars.selectors as cs
 import pysam
 
 from hifi_trimmer.utils import trim_positions, format_fasta_record
