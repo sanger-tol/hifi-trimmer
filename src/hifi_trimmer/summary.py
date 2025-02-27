@@ -14,9 +14,14 @@ def summarise_blast(blast: pl.LazyFrame) -> pl.DataFrame:
 
 def summarise_hits(hits: pl.DataFrame) -> pl.DataFrame:
     return (
-        hits.unpivot(
-            cs.by_name(["discard", "trim_l", "trim_r"]),
-            index=~cs.by_name(["discard", "trim_l", "trim_r"]),
+        hits.select(
+            sseqid=pl.col("sseqid"),
+            discard=pl.col("discard"),
+            trim=(pl.col("trim_l") + pl.col("trim_r")).cast(pl.Boolean),
+        )
+        .unpivot(
+            cs.by_name(["discard", "trim"]),
+            index="sseqid",
             variable_name="action",
         )
         .filter(pl.col("value"))
@@ -24,6 +29,7 @@ def summarise_hits(hits: pl.DataFrame) -> pl.DataFrame:
         .len(name="n_hits")
         .filter(pl.col("n_hits") > 0)
         .rename({"sseqid": "adapter"})
+        .sort(["adapter", "action"])
     )
 
 
@@ -44,4 +50,5 @@ def summarise_actions(actions: pl.DataFrame) -> pl.DataFrame:
         )
         .filter(pl.col("n_reads") > 0)
         .rename({"sseqid": "adapter"})
+        .sort(["adapter", "action"])
     )

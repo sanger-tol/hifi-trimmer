@@ -103,7 +103,7 @@ def determine_actions(
             cols=pl.when(pl.col("discard").any())
             .then(
                 pl.concat_list(
-                    pl.struct(["idx", "sseqid", "qstart", "qend"]).get(
+                    pl.struct(["sseqid", "qstart", "qend"]).get(
                         pl.col("evalue").arg_min()
                     )
                 )
@@ -112,12 +112,12 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     filter_get_min(
-                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
+                        pl.struct(["sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qend") <= end_length,
                     ).implode(),
                     filter_get_min(
-                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
+                        pl.struct(["sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qstart") >= pl.col("read_length") - end_length,
                     ).implode(),
@@ -127,7 +127,7 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     filter_get_min(
-                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
+                        pl.struct(["sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qend") <= end_length,
                     )
@@ -137,7 +137,7 @@ def determine_actions(
             .then(
                 pl.concat_list(
                     filter_get_min(
-                        pl.struct(["idx", "sseqid", "qstart", "qend"]),
+                        pl.struct(["sseqid", "qstart", "qend"]),
                         pl.col("evalue"),
                         pl.col("qstart") >= (pl.col("read_length") - end_length),
                     )
@@ -147,6 +147,6 @@ def determine_actions(
             .explode(),
         )
         .explode("action", "cols")
-        .with_columns(pl.col("cols").struct.field(["idx", "sseqid", "qstart", "qend"]))
-        .sort(pl.col("idx"), maintain_order=True)
+        .with_columns(pl.col("cols").struct.field(["sseqid", "qstart", "qend"]))
+        .sort(["qseqid", "qstart"], maintain_order=True)
     )
