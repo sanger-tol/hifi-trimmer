@@ -45,29 +45,26 @@ def match_hits(
         (pl.col("length") >= pl.col("end_length")),
     )
 
-    blastout = (
+    return (
         blastout
         ## match each blast hit with an adapter
-        ## below line more efficient but currently can't preserve order
-        # .join_where(adapter_df, pl.col("sseqid").str.contains(pl.col("adapter")))
-        .join(adapter_df, how="cross", maintain_order="left")
-        .filter(pl.col("sseqid").str.contains(pl.col("adapter")))
+        .join_where(
+            adapter_df, pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter"))
+        )
         ## Determine which hits to keep and return rows with a "real" hit
         .with_columns(discard=discard, trim_l=trim_l, trim_r=trim_r)
         .filter(pl.any_horizontal("discard", "trim_l", "trim_r"))
     )
 
-    return blastout
-
 
 def determine_actions(
-    blastout: pl.LazyFrame, end_length: int, min_length: int
+    hits: pl.LazyFrame, end_length: int, min_length: int
 ) -> pl.LazyFrame:
     """Take a dataframe of matches from match_hits()
     and process the result to decide which actions to take.
 
     Keyword arguments:
-    blastout: pl.DataFrame of blast hits with matches
+    hits: pl.DataFrame of blast hits with matches
     end_length: length of window at either end of read which is examined for trimming
     min_length: minimum length of a read after trimming to keep
     """
@@ -77,8 +74,8 @@ def determine_actions(
 
     ## Calculate read length after trimming (naiively) and then unpivot the trim columns so the
     ## trim section below operates separately for l and r
-    result = (
-        blastout.with_columns(
+    return (
+        hits.with_columns(
             (
                 pl.col("read_length")
                 - ((pl.col("trim_l").any() + pl.col("trim_r").any()) * end_length)
@@ -92,7 +89,7 @@ def determine_actions(
             )
         )
         .drop("read_length_after_trimming")
-        .group_by("qseqid", maintain_order=True)
+        .group_by("qseqid")
         .agg(
             read_length=pl.col("read_length").first(),
             action=pl.when(pl.col("discard").any())
@@ -102,8 +99,7 @@ def determine_actions(
             .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
             .then(pl.lit(["trim_l"]))
             .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(pl.lit(["trim_r"]))
-            .otherwise(pl.lit(["no_reason"])),
+            .then(pl.lit(["trim_r"])),
             cols=pl.when(pl.col("discard").any())
             .then(
                 pl.concat_list(
@@ -147,16 +143,10 @@ def determine_actions(
                     )
                 )
             )
-            .otherwise(
-                pl.concat_list(
-                    pl.struct(sseqid=pl.lit("none"), qstart=pl.lit(0), qend=pl.lit(0))
-                )
-            )
             .explode()  ## this could be tidied
             .explode(),
         )
         .explode("action", "cols")
         .with_columns(pl.col("cols").struct.field(["sseqid", "qstart", "qend"]))
+        .sort(["qseqid", "qstart"], maintain_order=True)
     )
-
-    return result

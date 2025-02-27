@@ -1,6 +1,4 @@
-import click
 import polars as pl
-import pysam
 import yaml
 
 
@@ -11,7 +9,19 @@ def read_adapter_yaml(yaml_path: str) -> pl.LazyFrame:
     except yaml.YAMLError as exc:
         print(exc)
 
-    return pl.DataFrame(adapters).lazy()
+    return pl.DataFrame(
+        adapters,
+        schema={
+            "adapter": pl.String,
+            "discard_middle": pl.Boolean,
+            "discard_end": pl.Boolean,
+            "trim_end": pl.Boolean,
+            "middle_pident": pl.Float32,
+            "end_pident": pl.Float32,
+            "middle_length": pl.UInt8,
+            "end_length": pl.UInt8,
+        },
+    ).lazy()
 
 
 def read_blast(blast_path: str) -> pl.LazyFrame:
@@ -27,24 +37,26 @@ def read_blast(blast_path: str) -> pl.LazyFrame:
         blast_path,
         has_header=False,
         separator="\t",
-        low_memory=True,
         schema={
             "qseqid": pl.String,
             "sseqid": pl.String,
-            "pident": pl.Float64,
-            "length": pl.Int64,
-            "mismatch": pl.Int64,
-            "gapopen": pl.Int64,
-            "qstart": pl.Int64,
-            "qend": pl.Int64,
-            "sstart": pl.Int64,
-            "send": pl.Int64,
-            "evalue": pl.Float64,
-            "bitscore": pl.Float64,
-            "read_length": pl.Int64,
+            "pident": pl.Float32,
+            "length": pl.UInt8,
+            "mismatch": pl.UInt8,
+            "gapopen": pl.UInt8,
+            "qstart": pl.UInt16,
+            "qend": pl.UInt16,
+            "sstart": pl.UInt8,
+            "send": pl.UInt8,
+            "evalue": pl.Float32,
+            "bitscore": pl.Float32,
+            "read_length": pl.UInt16,
         },
     ).with_columns(
-        pl.col("qseqid").set_sorted(),  ## Set sorted for faster grouping operations
+        pl.col("qseqid")
+        .cast(pl.Categorical)
+        .set_sorted(),  ## Set sorted for faster grouping operations
+        pl.col("sseqid").cast(pl.Categorical),
         pl.when(pl.col("qstart") > pl.col("qend"))
         .then(
             pl.struct(

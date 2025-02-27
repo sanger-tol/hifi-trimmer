@@ -14,6 +14,7 @@ from hifi_trimmer.output import (
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
+from hifi_trimmer.summary import summarise_blast, summarise_hits, summarise_actions
 
 
 @click.group()
@@ -73,15 +74,15 @@ def cli():
     help="Number of threads to use for compression",
 )
 def process_blast(
-    blastout,
-    adapter_yaml,
-    prefix,
-    min_length_after_trimming,
-    end_length,
-    hits_flag,
-    no_summary,
-    threads,
-):
+    blastout: str,
+    adapter_yaml: click.File,
+    prefix: str,
+    min_length_after_trimming: int,
+    end_length: int,
+    hits_flag: bool,
+    no_summary: bool,
+    threads: int,
+) -> None:
     """Processes the input blastout file according to the adapter yaml key.
 
     BLASTOUT: tabular file resulting from a BLAST query of a readset against a BLAST
@@ -109,13 +110,14 @@ def process_blast(
         prefix = re.sub("\\.blastout.*$", "", blastout)
 
     ## Set null outputs
-    blast = None
-    hits = None
-    actions = None
+    blast_summary = None
+    hits_summary = None
+    actions_summary = None
     out_bed = "".encode("utf-8")
 
     try:
         blast = read_blast(blastout)
+        blast_summary = summarise_blast(blast)
         adapters = read_adapter_yaml(adapter_yaml)
 
         ## Make sure each barcode that matches an adapter matches only one adapter
@@ -126,12 +128,17 @@ def process_blast(
             )
 
         ## process the blastout file
-        hits = match_hits(blast, adapters, end_length)
+        hits = match_hits(blast, adapters, end_length).collect()
+        hits_summary = summarise_hits(hits)
 
         ## Check if any hits matched - need to handle empty input!
-        if not (hits.limit(1).collect().is_empty()):
-            actions = determine_actions(hits, end_length, min_length_after_trimming)
-            bed = create_bed(actions, end_length)
+        if not (hits.is_empty()):
+            actions = determine_actions(
+                hits.lazy(), end_length, min_length_after_trimming
+            ).collect()
+            actions_summary = summarise_actions(actions)
+
+            bed = create_bed(actions.lazy(), end_length)
 
             if hits_flag:
                 write_hits(hits).write_csv(
@@ -145,13 +152,17 @@ def process_blast(
             )
 
             click.echo(f"BLAST file {blastout} parsed successfully!")
+        else:
+            click.echo(
+                "WARNING: After filtering, no BLAST hits remain. Writing empty BED output."
+            )
     except pl.exceptions.NoDataError:
         click.echo(f"WARNING: {blastout} was empty! Writing empty BED output.")
         blast = None
 
     if not no_summary:
         with open(prefix + ".summary.json", "w") as f:
-            summary = write_summary(blast, hits, actions)
+            summary = write_summary(blast_summary, hits_summary, actions_summary)
             json.dump(summary, f, indent=4)
 
     with open(prefix + ".bed.gz", "wb") as f:
@@ -170,7 +181,7 @@ def process_blast(
     type=int,
     help="Number of threads to use for compression",
 )
-def filter_bam(bam, bed, outfile, threads):
+def filter_bam(bam: click.File, bed: str, outfile: click.File, threads: int) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.
