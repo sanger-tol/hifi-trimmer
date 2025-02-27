@@ -58,13 +58,13 @@ def match_hits(
 
 
 def determine_actions(
-    blastout: pl.LazyFrame, end_length: int, min_length: int
+    hits: pl.LazyFrame, end_length: int, min_length: int
 ) -> pl.LazyFrame:
     """Take a dataframe of matches from match_hits()
     and process the result to decide which actions to take.
 
     Keyword arguments:
-    blastout: pl.DataFrame of blast hits with matches
+    hits: pl.DataFrame of blast hits with matches
     end_length: length of window at either end of read which is examined for trimming
     min_length: minimum length of a read after trimming to keep
     """
@@ -75,7 +75,7 @@ def determine_actions(
     ## Calculate read length after trimming (naiively) and then unpivot the trim columns so the
     ## trim section below operates separately for l and r
     return (
-        blastout.with_columns(
+        hits.with_columns(
             (
                 pl.col("read_length")
                 - ((pl.col("trim_l").any() + pl.col("trim_r").any()) * end_length)

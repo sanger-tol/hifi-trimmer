@@ -1,6 +1,4 @@
-import click
 import polars as pl
-import pysam
 import yaml
 
 

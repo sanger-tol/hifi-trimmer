@@ -74,15 +74,15 @@ def cli():
     help="Number of threads to use for compression",
 )
 def process_blast(
-    blastout,
-    adapter_yaml,
-    prefix,
-    min_length_after_trimming,
-    end_length,
-    hits_flag,
-    no_summary,
-    threads,
-):
+    blastout: str,
+    adapter_yaml: click.File,
+    prefix: str,
+    min_length_after_trimming: int,
+    end_length: int,
+    hits_flag: bool,
+    no_summary: bool,
+    threads: int,
+) -> None:
     """Processes the input blastout file according to the adapter yaml key.
 
     BLASTOUT: tabular file resulting from a BLAST query of a readset against a BLAST
@@ -181,7 +181,7 @@ def process_blast(
     type=int,
     help="Number of threads to use for compression",
 )
-def filter_bam(bam, bed, outfile, threads):
+def filter_bam(bam: click.File, bed: str, outfile: click.File, threads: int) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.

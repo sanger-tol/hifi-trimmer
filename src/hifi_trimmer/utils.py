@@ -25,7 +25,7 @@ def format_fasta_record(header: str, sequence: str) -> str:
     return f">{header}\n{sequence}\n"
 
 
-def trim_positions(seq, ranges):
+def trim_positions(seq: str, ranges: list) -> str:
     """Trim DNA sequence seq to remove the positions specified in ranges.
 
     seq: string

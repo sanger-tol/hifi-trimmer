@@ -3,6 +3,10 @@ import polars.selectors as cs
 
 
 def summarise_blast(blast: pl.LazyFrame) -> pl.DataFrame:
+    """
+    Summarise a raw BLAST table, returning the number of hits by
+    adapter.
+    """
     return (
         blast.group_by("sseqid")
         .len("n_hits")
@@ -13,6 +17,10 @@ def summarise_blast(blast: pl.LazyFrame) -> pl.DataFrame:
 
 
 def summarise_hits(hits: pl.DataFrame) -> pl.DataFrame:
+    """
+    Summarise a filtered BLAST table, returning the number of hits by
+    adapter and action.
+    """
     return (
         hits.select(
             sseqid=pl.col("sseqid"),
@@ -34,6 +42,10 @@ def summarise_hits(hits: pl.DataFrame) -> pl.DataFrame:
 
 
 def summarise_actions(actions: pl.DataFrame) -> pl.DataFrame:
+    """
+    Summarise an actions table, returning the number of reads affected
+    and the number of bases removed for each adapter and action.
+    """
     return (
         actions.with_columns(
             bases=pl.when(pl.col("action") == "discard")
