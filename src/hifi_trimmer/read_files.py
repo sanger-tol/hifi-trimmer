@@ -41,7 +41,7 @@ def read_blast(blast_path: str) -> pl.LazyFrame:
         separator="\t",
         schema={
             "qseqid": pl.String,
-            "sseqid": pl.Categorical,
+            "sseqid": pl.String,
             "pident": pl.Float32,
             "length": pl.UInt8,
             "mismatch": pl.UInt8,
@@ -58,6 +58,7 @@ def read_blast(blast_path: str) -> pl.LazyFrame:
         pl.col("qseqid")
         .cast(pl.Categorical)
         .set_sorted(),  ## Set sorted for faster grouping operations
+        pl.col("sseqid").cast(pl.Categorical),
         pl.when(pl.col("qstart") > pl.col("qend"))
         .then(
             pl.struct(

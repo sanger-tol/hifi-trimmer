@@ -57,11 +57,10 @@ def write_summary(
 
         if hits_summary is not None and not hits_summary.is_empty():
             summary["hits"] = (
-                hits_summary.join(
-                actions_summary, on=["adapter", "action"]
+                hits_summary.join(actions_summary, on=["adapter", "action"])
+                .sort(["adapter", "action"])
+                .to_dicts()
             )
-            .sort(["adapter", "action"])
-            .to_dicts())
 
             summary["total_bases_removed"] = actions_summary["bases_removed"].sum()
             summary["total_reads_discarded"] = actions_summary.filter(
