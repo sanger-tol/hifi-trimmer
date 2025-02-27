@@ -153,7 +153,9 @@ def process_blast(
 
             click.echo(f"BLAST file {blastout} parsed successfully!")
         else:
-            click.echo("WARNING: After filtering, no BLAST hits remain. Writing empty BED output.")
+            click.echo(
+                "WARNING: After filtering, no BLAST hits remain. Writing empty BED output."
+            )
     except pl.exceptions.NoDataError:
         click.echo(f"WARNING: {blastout} was empty! Writing empty BED output.")
         blast = None
