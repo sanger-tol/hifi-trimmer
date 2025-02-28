@@ -16,6 +16,7 @@ from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
 from hifi_trimmer.summary import summarise_blast, summarise_hits, summarise_actions
 
+pl.enable_string_cache()
 
 @click.group()
 def cli():
