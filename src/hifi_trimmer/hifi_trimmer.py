@@ -1,5 +1,6 @@
 import bgzip
 import click
+import importlib.metadata
 import json
 import polars as pl
 import re
@@ -16,9 +17,9 @@ from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
 from hifi_trimmer.summary import summarise_blast, summarise_hits, summarise_actions
 
-pl.enable_string_cache()
 
 @click.group()
+@click.version_option(package_name="hifi_trimmer")
 def cli():
     """Main entry point for the tool."""
     pass

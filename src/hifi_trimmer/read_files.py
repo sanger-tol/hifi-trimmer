@@ -44,13 +44,13 @@ def read_blast(blast_path: str) -> pl.LazyFrame:
             "length": pl.UInt8,
             "mismatch": pl.UInt8,
             "gapopen": pl.UInt8,
-            "qstart": pl.UInt16,
-            "qend": pl.UInt16,
+            "qstart": pl.UInt32,
+            "qend": pl.UInt32,
             "sstart": pl.UInt8,
             "send": pl.UInt8,
             "evalue": pl.Float32,
             "bitscore": pl.Float32,
-            "read_length": pl.UInt16,
+            "read_length": pl.UInt32,
         },
     ).with_columns(
         pl.col("qseqid")

@@ -21,7 +21,7 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
         .then(pl.lit(end_length))
         .otherwise(pl.lit(0)),
         reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid")),
-    )
+    ).sort("qseqid", "start")
 
 
 def write_summary(

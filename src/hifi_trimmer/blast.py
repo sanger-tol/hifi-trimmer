@@ -1,4 +1,5 @@
 import polars as pl
+import polars.selectors as cs
 
 
 def match_hits(
@@ -68,85 +69,60 @@ def determine_actions(
     end_length: length of window at either end of read which is examined for trimming
     min_length: minimum length of a read after trimming to keep
     """
-
-    def filter_get_min(getcol, maxcol, cond) -> pl.Expr:
-        return getcol.filter(cond).get(maxcol.filter(cond).arg_min())
-
-    ## Calculate read length after trimming (naiively) and then unpivot the trim columns so the
-    ## trim section below operates separately for l and r
-    return (
-        hits.with_columns(
-            (
-                pl.col("read_length")
-                - ((pl.col("trim_l").any() + pl.col("trim_r").any()) * end_length)
+    hits_actions = hits.with_columns(
+        (
+            pl.col("read_length")
+            - ((pl.col("trim_l").any() + pl.col("trim_r").any()) * end_length)
+        )
+        .over("qseqid")
+        .alias("read_length_after_trimming"),
+    ).with_columns(
+        gen_action=(
+            pl.when(
+                pl.col("discard").any()
+                | (pl.col("read_length_after_trimming") < min_length)
             )
+            .then(pl.lit("discard"))
+            .otherwise(pl.lit("trim"))
             .over("qseqid")
-            .alias("read_length_after_trimming"),
         )
-        .with_columns(
-            discard=(
-                pl.col("discard") | (pl.col("read_length_after_trimming") < min_length)
-            )
-        )
-        .drop("read_length_after_trimming")
+    )
+
+    discard = (
+        hits_actions.filter(pl.col("gen_action") == "discard")
         .group_by("qseqid")
         .agg(
-            read_length=pl.col("read_length").first(),
-            action=pl.when(pl.col("discard").any())
-            .then(pl.lit(["discard"]))
-            .when(pl.col("trim_r").any() & pl.col("trim_l").any())
-            .then(pl.lit(["trim_l", "trim_r"]))
-            .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
-            .then(pl.lit(["trim_l"]))
-            .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(pl.lit(["trim_r"])),
-            cols=pl.when(pl.col("discard").any())
-            .then(
-                pl.concat_list(
-                    pl.struct(["sseqid", "qstart", "qend"]).get(
-                        pl.col("evalue").arg_min()
-                    )
-                )
-            )
-            .when(pl.col("trim_l").any() & pl.col("trim_r").any())
-            .then(
-                pl.concat_list(
-                    filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
-                        pl.col("evalue"),
-                        pl.col("qend") <= end_length,
-                    ).implode(),
-                    filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
-                        pl.col("evalue"),
-                        pl.col("qstart") >= pl.col("read_length") - end_length,
-                    ).implode(),
-                )
-            )
-            .when(pl.col("trim_l").any() & ~pl.col("trim_r").any())
-            .then(
-                pl.concat_list(
-                    filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
-                        pl.col("evalue"),
-                        pl.col("qend") <= end_length,
-                    )
-                )
-            )
-            .when(pl.col("trim_r").any() & ~pl.col("trim_l").any())
-            .then(
-                pl.concat_list(
-                    filter_get_min(
-                        pl.struct(["sseqid", "qstart", "qend"]),
-                        pl.col("evalue"),
-                        pl.col("qstart") >= (pl.col("read_length") - end_length),
-                    )
-                )
-            )
-            .explode()  ## this could be tidied
-            .explode(),
+            pl.col("sseqid", "qstart", "qend", "read_length").get(
+                pl.col("evalue").arg_min()
+            ),
+            action=pl.lit("discard"),
         )
-        .explode("action", "cols")
-        .with_columns(pl.col("cols").struct.field(["sseqid", "qstart", "qend"]))
-        .sort(["qseqid", "qstart"], maintain_order=True)
     )
+
+    trim_l = (
+        hits_actions.filter(~(pl.col("gen_action") == "discard"), pl.col("trim_l"))
+        .group_by("qseqid")
+        .agg(
+            pl.col("sseqid", "qstart", "qend", "read_length")
+            .filter(pl.col("qend") <= end_length)
+            .get(pl.col("evalue").filter(pl.col("qend") <= end_length).arg_min()),
+            action=pl.lit("trim_l"),
+        )
+    )
+
+    trim_r = (
+        hits_actions.filter(~(pl.col("gen_action") == "discard"), pl.col("trim_r"))
+        .group_by("qseqid")
+        .agg(
+            pl.col("sseqid", "qstart", "qend", "read_length")
+            .filter(pl.col("qstart") >= pl.col("read_length") - end_length)
+            .get(
+                pl.col("evalue")
+                .filter(pl.col("qstart") >= pl.col("read_length") - end_length)
+                .arg_min()
+            ),
+            action=pl.lit("trim_r"),
+        )
+    )
+
+    return pl.concat([discard, trim_l, trim_r])
