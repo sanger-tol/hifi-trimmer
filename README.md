@@ -25,6 +25,20 @@ pip install .
 
 ## Usage
 
+```
+Usage: hifi_trimmer [OPTIONS] COMMAND [ARGS]...
+
+  Main entry point for the tool.
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  filter_bam     Filter the reads stored in a BAM file using the...
+  process_blast  Processes the input blastout file according to the...
+```
+
 To process a blast output TSV to a BED file:
 
 ```
@@ -57,8 +71,6 @@ Usage: hifi_trimmer process_blast [OPTIONS] BLASTOUT ADAPTER_YAML
 Options:
   -p, --prefix TEXT               Output prefix for results. Defaults to the
                                   basename of the blastout if not provided.
-  -b, --bam FILENAME              If blastout file has no read length field, a
-                                  BAM file of reads to get read lengths
   -ml, --min_length_after_trimming INTEGER
                                   Minumum length of a read after trimming the
                                   ends in order not to be discarded
