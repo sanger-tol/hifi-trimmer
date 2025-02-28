@@ -40,6 +40,7 @@ def cli():
     "-ml",
     "--min_length_after_trimming",
     default=300,
+    show_default=True,
     type=int,
     help="Minumum length of a read after trimming the ends in order not to be discarded",
 )
@@ -47,6 +48,7 @@ def cli():
     "-el",
     "--end_length",
     default=150,
+    show_default=True,
     type=int,
     help="Window size at either end of the read to be considered as 'ends' for searching",
 )
@@ -72,6 +74,7 @@ def cli():
     "-t",
     "--threads",
     default=1,
+    show_default=True,
     type=int,
     help="Number of threads to use for compression",
 )
@@ -180,6 +183,7 @@ def process_blast(
     "-t",
     "--threads",
     default=1,
+    show_default=True,
     type=int,
     help="Number of threads to use for compression",
 )
@@ -188,10 +192,9 @@ def filter_bam(bam: click.File, bed: str, outfile: click.File, threads: int) -> 
     Filter the reads stored in a BAM file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.
 
+    \b
     BAM: BAM file in which to filter reads
-
     BED: BED file describing regions of the read set to exclude.
-
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
     filters = filter_bam_with_bed(outfile, bam, bed, threads)

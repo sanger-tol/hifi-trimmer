@@ -73,9 +73,11 @@ Options:
                                   basename of the blastout if not provided.
   -ml, --min_length_after_trimming INTEGER
                                   Minumum length of a read after trimming the
-                                  ends in order not to be discarded
+                                  ends in order not to be discarded  [default:
+                                  300]
   -el, --end_length INTEGER       Window size at either end of the read to be
                                   considered as 'ends' for searching
+                                  [default: 150]
   -hf, --hits                     Write the hits identified using the given
                                   adapter specifications to TSV. The format is
                                   standard BLAST outfmt 6 with the following
@@ -84,25 +86,24 @@ Options:
   --no-summary                    Skip writing a summary TSV with the number
                                   of hits for each adapter
   -t, --threads INTEGER           Number of threads to use for compression
+                                  [default: 1]
   --help                          Show this message and exit.
 ```
 
 To filter a bam file using the BED file:
 
 ```
-Usage: hifi_trimmer filter_bam [OPTIONS] BAM BED OUTFILE
 
   Filter the reads stored in a BAM file using the appropriate BED file
   produced by blastout_to_bed and write to a bgzipped fasta file.
 
   BAM: BAM file in which to filter reads
-
   BED: BED file describing regions of the read set to exclude.
-
   OUTFILE: File to write the filtered reads to (bgzipped).
 
 Options:
-  -t, --threads INTEGER  Number of threads to use for compression
+  -t, --threads INTEGER  Number of threads to use for compression  [default:
+                         1]
   --help                 Show this message and exit.
 ```
 
