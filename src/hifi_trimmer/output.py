@@ -136,6 +136,7 @@ def filter_bam_with_bed(
 
                     sequence = trim_positions(read.query_sequence, ranges)
                     qual = trim_positions(read.qual, ranges)
+
                     print(
                         f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}"
                     )
@@ -153,11 +154,18 @@ def filter_bam_with_bed(
                                 )
                             )
                 else:
-                    out.write(
-                        format_fasta_record(
-                            read.query_name, read.query_sequence
-                        ).encode("utf-8")
-                    )
+                    if fastq:
+                        out.write(
+                            format_fastq_record(
+                                read.query_name, read.query_sequence, read.qual
+                            ).encode("utf-8")
+                        )
+                    else:
+                        out.write(
+                            format_fasta_record(
+                                read.query_name, read.query_sequence
+                            ).encode("utf-8")
+                        )
 
     ## return the remaining filters - if we did all reads, should be empty
     return filters

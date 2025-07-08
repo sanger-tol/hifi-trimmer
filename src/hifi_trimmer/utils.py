@@ -27,7 +27,7 @@ def format_fasta_record(header: str, sequence: str) -> str:
 
 def format_fastq_record(header: str, sequence: str, qual: str) -> str:
     """Format a header and sequence into FASTA format"""
-    return f"@{header}\n{sequence}\n+\n{qual}"
+    return f"@{header}\n{sequence}\n+\n{qual}\n"
 
 
 def trim_positions(seq: str, ranges: list) -> str:
