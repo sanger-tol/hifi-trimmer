@@ -20,14 +20,12 @@ def check_records(blast: pl.LazyFrame, adapter_df: pl.DataFrame) -> list:
     return counts
 
 
-def format_fasta_record(header: str, sequence: str) -> str:
+def format_fastx_record(header: str, sequence: str, qual: str | None) -> str:
     """Format a header and sequence into FASTA format"""
-    return f">{header}\n{sequence}\n"
-
-
-def format_fastq_record(header: str, sequence: str, qual: str) -> str:
-    """Format a header and sequence into FASTA format"""
-    return f"@{header}\n{sequence}\n+\n{qual}\n"
+    if qual is not None:
+        return f"@{header}\n{sequence}\n+\n{qual}\n"
+    else:
+        return f">{header}\n{sequence}\n"
 
 
 def trim_positions(seq: str, ranges: list) -> str:

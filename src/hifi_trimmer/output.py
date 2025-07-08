@@ -3,7 +3,7 @@ import click
 import polars as pl
 import pysam
 
-from hifi_trimmer.utils import trim_positions, format_fasta_record, format_fastq_record
+from hifi_trimmer.utils import trim_positions, format_fastx_record
 
 
 def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
@@ -135,37 +135,30 @@ def filter_bam_with_bed(
                         ranges.append((int(r["start"]), int(r["end"])))
 
                     sequence = trim_positions(read.query_sequence, ranges)
-                    qual = trim_positions(read.qual, ranges)
+
+                    qual = None
+                    if fastq:
+                        qual = trim_positions(read.qual, ranges)
 
                     print(
                         f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}"
                     )
                     if len(sequence) > 0:
-                        if fastq:
-                            out.write(
-                                format_fastq_record(
-                                    read.query_name, sequence, qual
-                                ).encode("utf-8")
+                        out.write(
+                            format_fastx_record(read.query_name, sequence, qual).encode(
+                                "utf-8"
                             )
-                        else:
-                            out.write(
-                                format_fasta_record(read.query_name, sequence).encode(
-                                    "utf-8"
-                                )
-                            )
+                        )
                 else:
+                    qual = None
                     if fastq:
-                        out.write(
-                            format_fastq_record(
-                                read.query_name, read.query_sequence, read.qual
-                            ).encode("utf-8")
-                        )
-                    else:
-                        out.write(
-                            format_fasta_record(
-                                read.query_name, read.query_sequence
-                            ).encode("utf-8")
-                        )
+                        qual = read.qual
+
+                    out.write(
+                        format_fastx_record(
+                            read.query_name, read.query_sequence, qual
+                        ).encode("utf-8")
+                    )
 
     ## return the remaining filters - if we did all reads, should be empty
     return filters
