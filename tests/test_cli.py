@@ -88,3 +88,25 @@ def test_filter_bam(tmp_path, testdata):
 
     assert result.exit_code == 0
     assert md5_fasta == md5checksum(testdata["fa"])
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_filter_bam_fastq(tmp_path, testdata):
+    runner = CliRunner()
+
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "filter_bam",
+                testdata["bam"],
+                testdata["bed"],
+                "test.filtered.fq.gz",
+                "--fastq",
+            ],
+        )
+
+        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fq.gz")
+
+    assert result.exit_code == 0
+    assert md5_fasta == md5checksum(testdata["fq"])
