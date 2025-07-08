@@ -1,17 +1,17 @@
 # hifi_trimmer
 
-`hifi_trimmer` is a command-line tool for filtering and trimming extraneous adapter hits 
-from a HiFi read set using a BLAST search against a fasta file of adapter sequences. It is 
-designed to be highly configurable, with per-adapter settings to determine actions if 
+`hifi_trimmer` is a command-line tool for filtering and trimming extraneous adapter hits
+from a HiFi read set using a BLAST search against a fasta file of adapter sequences. It is
+designed to be highly configurable, with per-adapter settings to determine actions if
 the adapter is found at the ends of a read or in the middle. To improve reproducibility,
 the primary output of the tool is a BED file that describes the region of each read to be
 excluded. The tool also includes a command to filter the reads to disk using the produced
 BED file.
 
-The polars backend for BLAST file processing should respect the number of cores set 
+The polars backend for BLAST file processing should respect the number of cores set
 by your scheduler; however, if this is not the case the number of threads used can be
 adjusted by setting the environment variable `POLARS_MAX_THREADS=int` before running the
-software. The number of threads used by the  bgzip backend for writing compressed 
+software. The number of threads used by the  bgzip backend for writing compressed
 BED files and the filtered FASTA files can be adjusted using the command-line option
 `--threads`.
 
@@ -93,6 +93,7 @@ Options:
 To filter a bam file using the BED file:
 
 ```
+Usage: hifi_trimmer filter_bam [OPTIONS] BAM BED OUTFILE
 
   Filter the reads stored in a BAM file using the appropriate BED file
   produced by blastout_to_bed and write to a bgzipped fasta file.
@@ -102,9 +103,11 @@ To filter a bam file using the BED file:
   OUTFILE: File to write the filtered reads to (bgzipped).
 
 Options:
+  -f, --fastq            Write FASTQ instead of FASTA
   -t, --threads INTEGER  Number of threads to use for compression  [default:
                          1]
   --help                 Show this message and exit.
+
 ```
 
 ## Example
@@ -142,7 +145,7 @@ Then run `blastout_to_bed` to generate a BED file:
 hifi_trimmer process_blast /path/to/blastout.gz /path/to/yaml
 ```
 
-Then filter the bam file using the BED file: 
+Then filter the bam file using the BED file:
 
 ```
 hifi_trimmer filter_bam /path/to/bam /path/to/bed /path/to/final/fasta.gz
