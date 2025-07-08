@@ -25,6 +25,11 @@ def format_fasta_record(header: str, sequence: str) -> str:
     return f">{header}\n{sequence}\n"
 
 
+def format_fastq_record(header: str, sequence: str, qual: str) -> str:
+    """Format a header and sequence into FASTA format"""
+    return f"@{header}\n{sequence}\n+\n{qual}"
+
+
 def trim_positions(seq: str, ranges: list) -> str:
     """Trim DNA sequence seq to remove the positions specified in ranges.
 

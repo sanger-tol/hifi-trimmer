@@ -180,6 +180,13 @@ def process_blast(
 @click.argument("bed", type=click.Path(exists=True))
 @click.argument("outfile", default=None, required=True, type=click.File(mode="wb"))
 @click.option(
+    "-f",
+    "--fastq",
+    is_flag=True,
+    default=False,
+    help="Write FASTQ instead of FASTA",
+)
+@click.option(
     "-t",
     "--threads",
     default=1,
@@ -187,7 +194,9 @@ def process_blast(
     type=int,
     help="Number of threads to use for compression",
 )
-def filter_bam(bam: click.File, bed: str, outfile: click.File, threads: int) -> None:
+def filter_bam(
+    bam: click.File, bed: str, outfile: click.File, threads: int, fastq: bool
+) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.
@@ -197,7 +206,7 @@ def filter_bam(bam: click.File, bed: str, outfile: click.File, threads: int) -> 
     BED: BED file describing regions of the read set to exclude.
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
-    filters = filter_bam_with_bed(outfile, bam, bed, threads)
+    filters = filter_bam_with_bed(outfile, bam, bed, threads, fastq)
 
     try:
         read = next(filters)
