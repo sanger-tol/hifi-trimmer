@@ -1,11 +1,9 @@
 [project]
 name = "hifi_trimmer"
-version = "1.1.0"
-authors = [
-  { name="Jim Downie", email="jd42@sanger.ac.uk" },
-]
+version = "1.2.0"
+authors = [{ name = "Jim Downie", email = "jd42@sanger.ac.uk" }]
 description = """
-hifi_trimmer is a tool for filtering and trimming extraneous adapter hits from a 
+hifi_trimmer is a tool for filtering and trimming extraneous adapter hits from a
 HiFi read set using a BLAST search.
 """
 readme = "README.md"
@@ -38,11 +36,7 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.4",
-]
+dev = ["pytest>=8.3.4"]
