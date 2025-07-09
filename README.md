@@ -18,9 +18,7 @@ BED files and the filtered FASTA files can be adjusted using the command-line op
 ## Installation
 
 ```
-git clone git@github.com:sanger-tol/hifi-trimmer.git
-cd hifi-trimmer
-pip install .
+pip install hifi_trimmer
 ```
 
 ## Usage
