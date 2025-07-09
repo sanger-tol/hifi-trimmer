@@ -25,8 +25,10 @@ def match_hits(
         )
     ) | (
         (pl.col("discard_end")).and_(
-            (pl.col("qend") < end_length),
-            (pl.col("qstart") > pl.col("read_length") - end_length),
+            (
+                (pl.col("qend") < end_length)
+                | (pl.col("qstart") > pl.col("read_length") - end_length)
+            ),
             (pl.col("pident") >= pl.col("end_pident")),
             (pl.col("length") >= pl.col("end_length")),
         )
