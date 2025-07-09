@@ -3,7 +3,7 @@ import click
 import polars as pl
 import pysam
 
-from hifi_trimmer.utils import trim_positions, format_fasta_record
+from hifi_trimmer.utils import trim_positions, format_fastx_record
 
 
 def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
@@ -95,7 +95,9 @@ def write_hits(hits: pl.LazyFrame) -> pl.LazyFrame:
     ).collect()
 
 
-def filter_bam_with_bed(outfile: str, bam: click.File, bed: str, threads: int) -> iter:
+def filter_bam_with_bed(
+    outfile: str, bam: click.File, bed: str, threads: int, fastq: bool
+) -> iter:
     try:
         bed_df = pl.read_csv(
             bed,
@@ -133,19 +135,28 @@ def filter_bam_with_bed(outfile: str, bam: click.File, bed: str, threads: int) -
                         ranges.append((int(r["start"]), int(r["end"])))
 
                     sequence = trim_positions(read.query_sequence, ranges)
+
+                    qual = None
+                    if fastq:
+                        qual = trim_positions(read.qual, ranges)
+
                     print(
                         f"Processing read: {read.query_name}, ranges: {ranges}, original length: {read.query_length}, new_length: {len(sequence)}"
                     )
                     if len(sequence) > 0:
                         out.write(
-                            format_fasta_record(read.query_name, sequence).encode(
+                            format_fastx_record(read.query_name, sequence, qual).encode(
                                 "utf-8"
                             )
                         )
                 else:
+                    qual = None
+                    if fastq:
+                        qual = read.qual
+
                     out.write(
-                        format_fasta_record(
-                            read.query_name, read.query_sequence
+                        format_fastx_record(
+                            read.query_name, read.query_sequence, qual
                         ).encode("utf-8")
                     )
 
