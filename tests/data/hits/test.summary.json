@@ -20,7 +20,7 @@
         {
             "adapter": "PacBio_ULI_adapter",
             "action": "discard",
-            "n_hits": 21,
+            "n_hits": 24,
             "n_reads": 1,
             "bases_removed": 14095
         }
