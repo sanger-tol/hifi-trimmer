@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Remove extraneous duckdb dependency
 
-
 ## [[1.2.1](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.2.1)] - [2025-07-09]
 
 ### Fixed
