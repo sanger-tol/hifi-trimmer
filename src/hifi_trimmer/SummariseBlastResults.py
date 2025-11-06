@@ -73,7 +73,7 @@ class SummariseBlastResults:
             .sort(["adapter", "action"])
         )
 
-    def summarise_actions(self, actions) -> pl.DataFrame:
+    def _summarise_actions(self, actions) -> pl.DataFrame:
         """
         Summarise an actions table, returning the total number of reads affected
         and the number of bases removed for each action.

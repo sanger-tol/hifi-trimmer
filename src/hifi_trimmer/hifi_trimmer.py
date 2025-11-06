@@ -81,8 +81,7 @@ def process_blast(
     """Processes the input blastout file according to the adapter yaml key.
 
     BLASTOUT: tabular file resulting from a BLAST query of a readset against a BLAST
-    database of adapter sequences, run with -outfmt "6 std qlen". If the qlen column
-    is missing, lengths can be calculated by passing the --bam option.
+    database of adapter sequences, run with -outfmt "6 std qlen".
 
     ADAPTER_YAML: yaml file containing a list with the following fields per adapter:
 
