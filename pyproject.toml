@@ -1,6 +1,6 @@
 [project]
 name = "hifi_trimmer"
-version = "1.2.3"
+version = "2.0.0"
 authors = [{ name = "Jim Downie", email = "jd42@sanger.ac.uk" }]
 description = """
 hifi_trimmer is a tool for filtering and trimming extraneous adapter hits from a
@@ -17,7 +17,7 @@ requires-python = ">=3.10, <3.13"
 dependencies = [
     "bgzip>=0.5.0",
     "click>=8.1.8",
-    "polars==1.23.0",
+    "polars<=1.22.0",
     "pysam>=0.23.0",
     "pyyaml>=6.0.2",
 ]
