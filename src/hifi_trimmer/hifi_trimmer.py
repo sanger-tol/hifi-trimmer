@@ -58,7 +58,7 @@ def cli():
     default=False,
     type=bool,
     is_flag=True,
-    help="Skip writing a summary TSV with the number of hits for each adapter",
+    help="Skip writing a summary JSON with the number of hits for each adapter",
 )
 @click.option(
     "-t",
@@ -128,7 +128,6 @@ def process_blast(
 
     if not no_summary:
         summary = SummariseBlastResults(results)
-
         with open(prefix + ".summary.json", "w") as f:
             json.dump(summary.generate_summary(), f, indent=4)
 

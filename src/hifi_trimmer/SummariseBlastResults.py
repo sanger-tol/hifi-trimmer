@@ -11,7 +11,7 @@ class SummariseBlastResults:
         self.actions = result.actions
         self.end_length = result.end_length
 
-    def _summarise_blast(self) -> pl.DataFrame:
+    def _summarise_blast(self, blast) -> pl.DataFrame:
         """
         Summarise a raw BLAST table, returning the number of hits by
         adapter.
@@ -24,7 +24,7 @@ class SummariseBlastResults:
             .collect()
         )
 
-    def _summarise_hits(self) -> pl.DataFrame:
+    def _summarise_hits(self, hits) -> pl.DataFrame:
         """
         Summarise a filtered BLAST table, returning the number of hits by
         adapter and action.
@@ -48,7 +48,7 @@ class SummariseBlastResults:
             .sort(["adapter", "action"])
         )
 
-    def _summarise_adapter_actions(self) -> pl.DataFrame:
+    def _summarise_adapter_actions(self, actions) -> pl.DataFrame:
         """
         Summarise an actions table, returning the number of reads affected
         and the number of bases removed for each adapter and action.
@@ -73,7 +73,7 @@ class SummariseBlastResults:
             .sort(["adapter", "action"])
         )
 
-    def summarise_actions(self) -> pl.DataFrame:
+    def summarise_actions(self, actions) -> pl.DataFrame:
         """
         Summarise an actions table, returning the total number of reads affected
         and the number of bases removed for each action.
