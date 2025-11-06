@@ -60,10 +60,10 @@ class BamFilter:
             with pysam.AlignmentFile(
                 self.bam, "rb", check_sq=False, require_index=False
             ) as b:
-                ## Process: for each read in the BAM, check if it matches the current BED record.
-                ## If yes, pull BED records until we reach a record for the next read.
-                ## Then trim the sequence using the records pulled and write to fasta.
-                ## If not, write record straight to disk
+                ## Process: for each read in the BAM, check if it matches the current BED record.
+                ## If yes, pull BED records until we reach a record for the next read.
+                ## Then trim the sequence using the records pulled and write to fasta.
+                ## If not, write record straight to disk
                 for read in b.fetch(until_eof=True):
                     if r is not None and r["read"] == read.query_name:
                         ranges = [(int(r["start"]), int(r["end"]))]

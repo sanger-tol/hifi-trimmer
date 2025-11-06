@@ -162,6 +162,8 @@ def filter_bam(
     BED: BED file describing regions of the read set to exclude.
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
+    click.echo(f"Filtering {bam} using BED file: {bed}")
+    click.echo(f"Writing the output to {outfile}.")
     filterer = BamFilter(bam, bed, outfile, threads, fastq)
     filterer.filter_bam_with_bed()
 

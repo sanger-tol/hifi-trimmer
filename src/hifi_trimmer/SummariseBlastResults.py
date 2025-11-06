@@ -123,7 +123,7 @@ class SummariseBlastResults:
         adapter_actions_summary = self._summarise_adapter_actions(self.actions)
         all_actions_summary = self._summarise_actions(self.actions)
 
-        if not blast_summary.isEmpty():
+        if not blast_summary.is_empty():
             summary["detections"] = blast_summary.to_dicts()
 
             if not hits_summary.is_empty():
