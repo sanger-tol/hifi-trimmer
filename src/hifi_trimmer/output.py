@@ -27,7 +27,8 @@ def create_bed(actions: pl.LazyFrame, end_length: int) -> pl.LazyFrame:
 def write_summary(
     blast_summary: pl.DataFrame,
     hits_summary: pl.DataFrame,
-    actions_summary: pl.LazyFrame,
+    adapter_actions_summary: pl.DataFrame,
+    all_actions_summary: pl.DataFrame,
 ) -> dict:
     """
     Takes the raw BLAST table, the BLAST table filtered for "valid" hits
@@ -56,16 +57,16 @@ def write_summary(
 
         if hits_summary is not None and not hits_summary.is_empty():
             summary["hits"] = (
-                hits_summary.join(actions_summary, on=["adapter", "action"])
+                hits_summary.join(adapter_actions_summary, on=["adapter", "action"])
                 .sort(["adapter", "action"])
                 .to_dicts()
             )
 
-            summary["total_bases_removed"] = actions_summary["bases_removed"].sum()
-            summary["total_reads_discarded"] = actions_summary.filter(
+            summary["total_bases_removed"] = all_actions_summary["bases_removed"].sum()
+            summary["total_reads_discarded"] = all_actions_summary.filter(
                 pl.col("action") == "discard"
             )["n_reads"].sum()
-            summary["total_reads_trimmed"] = actions_summary.filter(
+            summary["total_reads_trimmed"] = all_actions_summary.filter(
                 pl.col("action") == "trim"
             )["n_reads"].sum()
 

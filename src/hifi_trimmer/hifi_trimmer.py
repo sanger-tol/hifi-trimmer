@@ -15,7 +15,12 @@ from hifi_trimmer.output import (
 from hifi_trimmer.blast import match_hits, determine_actions
 from hifi_trimmer.utils import check_records
 from hifi_trimmer.read_files import read_adapter_yaml, read_blast
-from hifi_trimmer.summary import summarise_blast, summarise_hits, summarise_actions
+from hifi_trimmer.summary import (
+    summarise_blast,
+    summarise_hits,
+    summarise_adapter_actions,
+    summarise_actions,
+)
 
 
 @click.group()
@@ -141,7 +146,8 @@ def process_blast(
             actions = determine_actions(
                 hits.lazy(), end_length, min_length_after_trimming
             ).collect()
-            actions_summary = summarise_actions(actions, end_length)
+            adapter_actions_summary = summarise_adapter_actions(actions, end_length)
+            all_actions_summary = summarise_actions(actions, end_length)
 
             bed = create_bed(actions.lazy(), end_length)
 
@@ -167,7 +173,12 @@ def process_blast(
 
     if not no_summary:
         with open(prefix + ".summary.json", "w") as f:
-            summary = write_summary(blast_summary, hits_summary, actions_summary)
+            summary = write_summary(
+                blast_summary,
+                hits_summary,
+                adapter_actions_summary,
+                all_actions_summary,
+            )
             json.dump(summary, f, indent=4)
 
     with open(prefix + ".bed.gz", "wb") as f:
