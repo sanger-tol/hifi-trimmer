@@ -41,25 +41,26 @@ def summarise_hits(hits: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def summarise_actions(actions: pl.DataFrame) -> pl.DataFrame:
+def summarise_actions(actions: pl.DataFrame, end_length: int) -> pl.DataFrame:
     """
     Summarise an actions table, returning the number of reads affected
     and the number of bases removed for each adapter and action.
     """
     return (
         actions.with_columns(
-            bases=pl.when(pl.col("action") == "discard")
-            .then(pl.col("read_length"))
-            .when(pl.col("action").str.contains("trim"))
-            .then(pl.lit(150)),
             action=pl.when(pl.col("action") == "discard")
             .then(pl.lit("discard"))
             .otherwise(pl.lit("trim")),
+            bases=pl.when(pl.col("action") == "discard")
+            .then(pl.col("read_length"))
+            .when(pl.col("action").str.contains("trim"))
+            .then(pl.lit(end_length))
+            .otherwise(pl.lit(0)),
         )
+        .group_by(["sseqid", "action", "qseqid"])
+        .agg(bases_removed=pl.col("bases").sum())
         .group_by(["sseqid", "action"])
-        .agg(
-            n_reads=pl.col("qseqid").unique().len(), bases_removed=pl.col("bases").sum()
-        )
+        .agg(n_reads=pl.len(), bases_removed=pl.col("bases_removed").sum())
         .filter(pl.col("n_reads") > 0)
         .rename({"sseqid": "adapter"})
         .sort(["adapter", "action"])
