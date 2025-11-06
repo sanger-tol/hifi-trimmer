@@ -141,7 +141,7 @@ def process_blast(
             actions = determine_actions(
                 hits.lazy(), end_length, min_length_after_trimming
             ).collect()
-            actions_summary = summarise_actions(actions)
+            actions_summary = summarise_actions(actions, end_length)
 
             bed = create_bed(actions.lazy(), end_length)
 
