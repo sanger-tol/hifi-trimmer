@@ -1,26 +1,11 @@
 import bgzip
 import click
-import importlib.metadata
 import json
-import polars as pl
 import re
 
-
-from hifi_trimmer.output import (
-    create_bed,
-    filter_bam_with_bed,
-    write_summary,
-    write_hits,
-)
-from hifi_trimmer.blast import match_hits, determine_actions
-from hifi_trimmer.utils import check_records
-from hifi_trimmer.read_files import read_adapter_yaml, read_blast
-from hifi_trimmer.summary import (
-    summarise_blast,
-    summarise_hits,
-    summarise_adapter_actions,
-    summarise_actions,
-)
+from hifi_trimmer.BamFilter import BamFilter
+from hifi_trimmer.BlastProcessor import BlastProcessor
+from hifi_trimmer.SummariseBlastResults import SummariseBlastResults
 
 
 @click.group()
@@ -119,71 +104,33 @@ def process_blast(
     if prefix is None:
         prefix = re.sub("\\.blastout.*$", "", blastout)
 
-    ## Set null outputs
-    blast_summary = None
-    hits_summary = None
-    actions_summary = None
-    out_bed = "".encode("utf-8")
+    ## Process BLAST inputs
+    results = BlastProcessor(
+        blastout, adapter_yaml, end_length, min_length_after_trimming
+    )
 
-    try:
-        blast = read_blast(blastout)
-        blast_summary = summarise_blast(blast)
-        adapters = read_adapter_yaml(adapter_yaml)
+    ## Write output hits if requested
+    if hits_flag and results.hits is not None and not results.hits.is_empty():
+        results.generate_hits().write_csv(
+            prefix + ".hits", separator="\t", include_header=False
+        )
 
-        ## Make sure each barcode that matches an adapter matches only one adapter
-        check = check_records(blast, adapters)
-        if len(check) > 0:
-            raise click.ClickException(
-                f"Barcodes {', '.join(check)} match to more than one adapter in {adapter_yaml.name}!"
-            )
-
-        ## process the blastout file
-        hits = match_hits(blast, adapters, end_length).collect()
-        hits_summary = summarise_hits(hits)
-
-        ## Check if any hits matched - need to handle empty input!
-        if not (hits.is_empty()):
-            actions = determine_actions(
-                hits.lazy(), end_length, min_length_after_trimming
-            ).collect()
-            adapter_actions_summary = summarise_adapter_actions(actions, end_length)
-            all_actions_summary = summarise_actions(actions, end_length)
-
-            bed = create_bed(actions.lazy(), end_length)
-
-            if hits_flag:
-                write_hits(hits).write_csv(
-                    prefix + ".hits", separator="\t", include_header=False
-                )
-
-            out_bed = (
-                bed.collect()
-                .write_csv(separator="\t", include_header=False)
-                .encode("utf-8")
-            )
-
-            click.echo(f"BLAST file {blastout} parsed successfully!")
-        else:
-            click.echo(
-                "WARNING: After filtering, no BLAST hits remain. Writing empty BED output."
-            )
-    except pl.exceptions.NoDataError:
-        click.echo(f"WARNING: {blastout} was empty! Writing empty BED output.")
-        blast = None
-
-    if not no_summary:
-        with open(prefix + ".summary.json", "w") as f:
-            summary = write_summary(
-                blast_summary,
-                hits_summary,
-                adapter_actions_summary,
-                all_actions_summary,
-            )
-            json.dump(summary, f, indent=4)
-
+    ## Write BED file
+    click.echo(f"Writing BED file: {prefix}.bed.gz")
+    out_bed = (
+        results.bed.write_csv(separator="\t", include_header=False).encode("utf-8")
+        if results.bed is not None
+        else b""
+    )
     with open(prefix + ".bed.gz", "wb") as f:
         with bgzip.BGZipWriter(f, num_threads=threads) as out:
             out.write(out_bed)
+
+    if not no_summary:
+        summary = SummariseBlastResults(results)
+
+        with open(prefix + ".summary.json", "w") as f:
+            json.dump(summary.generate_summary(), f, indent=4)
 
 
 @click.command("filter_bam")
@@ -217,19 +164,8 @@ def filter_bam(
     BED: BED file describing regions of the read set to exclude.
     OUTFILE: File to write the filtered reads to (bgzipped).
     """
-    filters = filter_bam_with_bed(outfile, bam, bed, threads, fastq)
-
-    try:
-        read = next(filters)
-        print(f"Read {read['read']} not processed!")
-        for read in filters:
-            print(f"Read {read['read']} not processed!")
-
-        raise click.ClickException(
-            "Not all entries in the BED file were processed! Did you forget to sort them in the same order as the BAM file?"
-        )
-    except StopIteration:
-        print("Read filtering complete!")
+    filterer = BamFilter(bam, bed, outfile, threads, fastq)
+    filterer.filter_bam_with_bed()
 
 
 cli.add_command(process_blast)
