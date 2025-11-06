@@ -10,33 +10,36 @@ class BlastProcessor:
         self.end_length = end_length
         self.min_length = min_length
 
+        self.adapter_yaml = None
+        self.raw_blast = None
         self.hits = None
         self.actions = None
         self.bed = None
 
-        ## Read raw data
-        self.adapter_yaml = self._read_adapter_yaml(yaml)
-        self.raw_blast = self._read_blast(blast)
-
-        ## Validate inputs
-        self._check_duplicate_adapter_matches(self.raw_blast, self.adapter_yaml)
-
         ## Process blast hits
         try:
+            ## Read raw data
+            self.adapter_yaml = self._read_adapter_yaml(yaml)
+            self.raw_blast = self._read_blast(blast)
+
+            ## Validate inputs
+            self._check_duplicate_adapter_matches(self.raw_blast, self.adapter_yaml)
+
+            ## Determine hits
             self.hits = self._determine_blast_hits(self.raw_blast).collect()
+
+            if self.hits.is_empty():
+                click.echo(
+                    "WARNING: After filtering, no BLAST hits remain. BED output will be empty."
+                )
+                return
+
+            # Generate actions and BED output
+            self.actions = self._determine_per_read_actions(self.hits.lazy()).collect()
+            self.bed = self.generate_bed(self.actions.lazy()).collect()
         except pl.exceptions.NoDataError:
             click.echo(f"WARNING: {blast} was empty! BED output will be empty.")
             return
-
-        if self.hits.is_empty():
-            click.echo(
-                "WARNING: After filtering, no BLAST hits remain. BED output will be empty."
-            )
-            return
-
-        # Generate actions and BED output
-        self.actions = self._determine_per_read_actions(self.hits.lazy()).collect()
-        self.bed = self.generate_bed(self.actions.lazy()).collect()
 
     def _read_adapter_yaml(self, yaml_path: str) -> pl.LazyFrame:
         """Open an adapter YAML file and return it as a lazy pl.DataFrame"""

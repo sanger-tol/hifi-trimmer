@@ -3,9 +3,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [[1.3.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.3.0)] - [2025-11-06]
+## [[2.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.3.0)] - [2025-11-06]
 
 ### Fixed
+- Refactor code under-the-hood to use classes instead of a more functional approach to improve maintanability
 - Fixed issue where reads which are trimmed by different adapters on left and right ends were
 double-counted in the final summary section.
 - Minor refactoring of the code to make navigating the project easier.

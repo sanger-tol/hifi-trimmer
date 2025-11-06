@@ -1,3 +1,4 @@
+import click
 import polars as pl
 import polars.selectors as cs
 
@@ -118,29 +119,38 @@ class SummariseBlastResults:
             "total_bases_removed": 0,
         }
 
-        blast_summary = self._summarise_blast(self.blast)
-        hits_summary = self._summarise_hits(self.hits)
-        adapter_actions_summary = self._summarise_adapter_actions(self.actions)
-        all_actions_summary = self._summarise_actions(self.actions)
+        try:
+            blast_summary = self._summarise_blast(self.blast)
+            hits_summary = self._summarise_hits(self.hits)
 
-        if not blast_summary.is_empty():
-            summary["detections"] = blast_summary.to_dicts()
+            if not blast_summary.is_empty():
+                summary["detections"] = blast_summary.to_dicts()
 
-            if not hits_summary.is_empty():
-                summary["hits"] = (
-                    hits_summary.join(adapter_actions_summary, on=["adapter", "action"])
-                    .sort(["adapter", "action"])
-                    .to_dicts()
-                )
+                if not hits_summary.is_empty():
+                    adapter_actions_summary = self._summarise_adapter_actions(
+                        self.actions
+                    )
+                    all_actions_summary = self._summarise_actions(self.actions)
 
-                summary["total_bases_removed"] = all_actions_summary[
-                    "bases_removed"
-                ].sum()
-                summary["total_reads_discarded"] = all_actions_summary.filter(
-                    pl.col("action") == "discard"
-                )["n_reads"].sum()
-                summary["total_reads_trimmed"] = all_actions_summary.filter(
-                    pl.col("action") == "trim"
-                )["n_reads"].sum()
+                    summary["hits"] = (
+                        hits_summary.join(
+                            adapter_actions_summary, on=["adapter", "action"]
+                        )
+                        .sort(["adapter", "action"])
+                        .to_dicts()
+                    )
+
+                    summary["total_bases_removed"] = all_actions_summary[
+                        "bases_removed"
+                    ].sum()
+                    summary["total_reads_discarded"] = all_actions_summary.filter(
+                        pl.col("action") == "discard"
+                    )["n_reads"].sum()
+                    summary["total_reads_trimmed"] = all_actions_summary.filter(
+                        pl.col("action") == "trim"
+                    )["n_reads"].sum()
+
+        except pl.exceptions.NoDataError:
+            click.echo("Writing empty summary file!")
 
         return summary
