@@ -9,6 +9,6 @@
     "run_info": {
         "blast_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/no_hits/test.blastout.gz",
         "yaml_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/no_hits/test.yaml",
-        "hifi_trimmer": "2.0.0"
+        "hifi_trimmer": "2.1.0"
     }
 }
