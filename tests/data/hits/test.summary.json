@@ -25,7 +25,14 @@
             "bases_removed": 14095
         }
     ],
-    "total_reads_discarded": 1,
-    "total_reads_trimmed": 3,
-    "total_bases_removed": 14695
+    "summary": {
+        "total_reads_discarded": 1,
+        "total_reads_trimmed": 3,
+        "total_bases_removed": 14695
+    },
+    "run_info": {
+        "blast_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/hits/test.blastout.gz",
+        "yaml_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/hits/test.yaml",
+        "hifi_trimmer": "2.0.0"
+    }
 }

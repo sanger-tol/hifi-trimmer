@@ -1,50 +1,60 @@
+from pathlib import Path
+
 import click
 import polars as pl
-
 import yaml
 
 
 class BlastProcessor:
     def __init__(self, blast, yaml, end_length=150, min_length=300):
         ## Initialise params
+        self.blast_file = Path(blast).resolve()
+        self.adapter_yaml_file = Path(yaml).resolve()
         self.end_length = end_length
         self.min_length = min_length
 
+        ## Initialise default empty data structures
         self.adapter_yaml = None
-        self.raw_blast = None
+        self.raw_blast_table = None
         self.hits = None
         self.actions = None
         self.bed = None
 
-        ## Process blast hits
+        ## Check if BLAST file is empty
         try:
-            ## Read raw data
-            self.adapter_yaml = self._read_adapter_yaml(yaml)
-            self.raw_blast = self._read_blast(blast)
-
-            ## Validate inputs
-            self._check_duplicate_adapter_matches(self.raw_blast, self.adapter_yaml)
-
-            ## Determine hits
-            self.hits = self._determine_blast_hits(self.raw_blast).collect()
-
-            if self.hits.is_empty():
-                click.echo(
-                    "WARNING: After filtering, no BLAST hits remain. BED output will be empty."
-                )
-                return
-
-            # Generate actions and BED output
-            self.actions = self._determine_per_read_actions(self.hits.lazy()).collect()
-            self.bed = self.generate_bed(self.actions.lazy()).collect()
+            self._read_blast(blast).head(1).collect()
         except pl.exceptions.NoDataError:
             click.echo(f"WARNING: {blast} was empty! BED output will be empty.")
             return
 
+        ## Read raw data
+        self.raw_blast_table = self._read_blast(blast)
+        self.adapter_table = self._read_adapter_yaml(yaml)
+
+        ## Validate inputs
+        self._check_duplicate_adapter_matches(self.raw_blast_table, self.adapter_table)
+
+        ## Determine hits
+        self.hits = self._determine_blast_hits(
+            self.raw_blast_table, self.adapter_table
+        ).collect()
+
+        if self.hits.is_empty():
+            self.hits = None
+            click.echo(
+                "WARNING: After filtering, no BLAST hits remain. BED output will be empty."
+            )
+            return
+
+        # Generate actions and BED output
+        self.actions = self._determine_per_read_actions(self.hits.lazy()).collect()
+        self.bed = self.generate_bed(self.actions.lazy()).collect()
+
     def _read_adapter_yaml(self, yaml_path: str) -> pl.LazyFrame:
         """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
         try:
-            adapters = yaml.safe_load(yaml_path)
+            with open(yaml_path) as f:
+                adapters = yaml.safe_load(f)
         except yaml.YAMLError as exc:
             print(exc)
 
@@ -131,7 +141,9 @@ class BlastProcessor:
                 f"Adapters {', '.join(counts)} in the BLAST table match to more than one adapter defined in the YAML!"
             )
 
-    def _determine_blast_hits(self, blast: pl.LazyFrame) -> pl.LazyFrame:
+    def _determine_blast_hits(
+        self, blast: pl.LazyFrame, adapter_table: pl.LazyFrame
+    ) -> pl.LazyFrame:
         """Determine whether each blast hit matches sufficient criteria for discard/trimming
 
         Keyword arguments:
@@ -179,7 +191,7 @@ class BlastProcessor:
             blast
             ## match each blast hit with an adapter
             .join_where(
-                self.adapter_yaml,
+                adapter_table,
                 pl.col("sseqid").cast(pl.String).str.contains(pl.col("adapter")),
             )
             ## Determine which hits to keep and return rows with a "real" hit

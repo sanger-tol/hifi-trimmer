@@ -4,13 +4,10 @@ import polars as pl
 import pysam
 
 
-class BamFilter:
+class BamFilterer:
     def __init__(
         self, bam: click.File, bed: str, outfile: str, threads: int, fastq: bool
     ):
-        self.bam = bam
-        self.bed = bed
-        self.outfile = outfile
         self.threads = threads
         self.write_fastq = fastq
 
@@ -35,10 +32,10 @@ class BamFilter:
 
         return seq
 
-    def filter_bam_with_bed(self) -> iter:
+    def filter_bam_with_bed(self, bam: click.File, bed: str, outfile: str):
         try:
             bed_df = pl.read_csv(
-                self.bed,
+                bed,
                 separator="\t",
                 has_header=False,
                 schema={
@@ -56,9 +53,9 @@ class BamFilter:
             filters = iter([])
             r = next(filters, None)
 
-        with bgzip.BGZipWriter(self.outfile, num_threads=self.threads) as out:
+        with bgzip.BGZipWriter(outfile, num_threads=self.threads) as out:
             with pysam.AlignmentFile(
-                self.bam, "rb", check_sq=False, require_index=False
+                bam, "rb", check_sq=False, require_index=False
             ) as b:
                 ## Process: for each read in the BAM, check if it matches the current BED record.
                 ## If yes, pull BED records until we reach a record for the next read.

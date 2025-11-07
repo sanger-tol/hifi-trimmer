@@ -1,9 +1,8 @@
 import bgzip
 import click
-import json
 import re
 
-from hifi_trimmer.BamFilter import BamFilter
+from hifi_trimmer.BamFilterer import BamFilterer
 from hifi_trimmer.BlastProcessor import BlastProcessor
 from hifi_trimmer.SummariseBlastResults import SummariseBlastResults
 
@@ -17,7 +16,7 @@ def cli():
 
 @click.command("process_blast")
 @click.argument("blastout", type=click.Path(exists=True))
-@click.argument("adapter_yaml", type=click.File(mode="r"))
+@click.argument("adapter_yaml", type=click.Path(exists=True))
 @click.option(
     "-p",
     "--prefix",
@@ -69,8 +68,8 @@ def cli():
     help="Number of threads to use for compression",
 )
 def process_blast(
-    blastout: str,
-    adapter_yaml: click.File,
+    blastout: click.Path,
+    adapter_yaml: click.Path,
     prefix: str,
     min_length_after_trimming: int,
     end_length: int,
@@ -127,8 +126,7 @@ def process_blast(
 
     if not no_summary:
         summary = SummariseBlastResults(results)
-        with open(prefix + ".summary.json", "w") as f:
-            json.dump(summary.generate_summary(), f, indent=4)
+        summary.generate_summary(prefix + ".summary.json")
 
 
 @click.command("filter_bam")
@@ -164,8 +162,9 @@ def filter_bam(
     """
     click.echo(f"Filtering {bam} using BED file: {bed}")
     click.echo(f"Writing the output to {outfile}.")
-    filterer = BamFilter(bam, bed, outfile, threads, fastq)
-    filterer.filter_bam_with_bed()
+
+    filterer = BamFilterer(threads, fastq)
+    filterer.filter_bam_with_bed(bam, bed, outfile)
 
 
 cli.add_command(process_blast)
