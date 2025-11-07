@@ -1,8 +1,11 @@
-from click.testing import CliRunner
-from hifi_trimmer.hifi_trimmer import cli
-import pathlib
 import hashlib
+import json
+import pathlib
+
 import pytest
+from click.testing import CliRunner
+
+from hifi_trimmer.hifi_trimmer import cli
 
 
 def list_test_data(test_dir):
@@ -48,6 +51,13 @@ def md5checksum(fname):
     return md5.hexdigest()
 
 
+def clean_summary_for_comparison(summary_dict):
+    """Remove environment-specific paths from summary dict."""
+    for key in ["blast_file", "yaml_file"]:
+        summary_dict["run_info"].pop(key, None)
+    return summary_dict
+
+
 @pytest.mark.parametrize("testdata", list_test_dirs())
 def test_process_blast(tmp_path, testdata):
     runner = CliRunner()
@@ -67,11 +77,17 @@ def test_process_blast(tmp_path, testdata):
         print(result.stdout)
 
         md5_bed = md5checksum(pathlib.Path(td) / "test.bed.gz")
-        md5_summary = md5checksum(pathlib.Path(td) / "test.summary.json")
+        summary_dict = clean_summary_for_comparison(
+            json.loads((pathlib.Path(td) / "test.summary.json").read_text())
+        )
+
+    comparison_summary = clean_summary_for_comparison(
+        json.loads(pathlib.Path(testdata["json"]).read_text())
+    )
 
     assert result.exit_code == 0
     assert md5_bed == md5checksum(testdata["bed"])
-    assert md5_summary == md5checksum(testdata["json"])
+    assert summary_dict == comparison_summary
 
 
 @pytest.mark.parametrize("testdata", list_test_dirs())
