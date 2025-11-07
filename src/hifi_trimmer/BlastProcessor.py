@@ -18,7 +18,7 @@ class BlastProcessor:
         self.raw_blast_table = None
         self.hits = None
         self.actions = None
-        self.bed = None
+        self.bed = b""
 
         ## Check if BLAST file is empty
         try:
@@ -48,7 +48,12 @@ class BlastProcessor:
 
         # Generate actions and BED output
         self.actions = self._determine_per_read_actions(self.hits.lazy()).collect()
-        self.bed = self.generate_bed(self.actions.lazy()).collect()
+        self.bed = (
+            self.generate_bed(self.actions.lazy())
+            .collect()
+            .write_csv(separator="\t", include_header=False)
+            .encode("utf-8")
+        )
 
     def _read_adapter_yaml(self, yaml_path: str) -> pl.LazyFrame:
         """Open an adapter YAML file and return it as a lazy pl.DataFrame"""
