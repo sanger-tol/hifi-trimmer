@@ -3,6 +3,16 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [[2.1.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.3.0)] - [2025-11-06]
+
+### Added
+
+- Added the paths to the BLAST and YAML files to the summary JSON file
+- Added the hifi_trimmer version to the summary JSON file
+
+### Fixed
+- Move the overall summary entries in the summary JSON file to a sub-dict called "summary"
+
 ## [[2.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.3.0)] - [2025-11-06]
 
 ### Fixed

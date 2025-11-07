@@ -1,4 +1,6 @@
-import click
+import importlib.metadata
+import json
+
 import polars as pl
 import polars.selectors as cs
 
@@ -7,7 +9,12 @@ from hifi_trimmer.BlastProcessor import BlastProcessor
 
 class SummariseBlastResults:
     def __init__(self, result: BlastProcessor):
-        self.blast = result.raw_blast
+        ## Grab input files from result
+        self.blast_file = result.blast_file
+        self.adapter_yaml = result.adapter_yaml_file
+
+        ## Copy results
+        self.blast_results = result.raw_blast_table
         self.hits = result.hits
         self.actions = result.actions
         self.end_length = result.end_length
@@ -18,7 +25,7 @@ class SummariseBlastResults:
         adapter.
         """
         return (
-            self.blast.group_by("sseqid")
+            blast.group_by("sseqid")
             .len("n_hits")
             .rename({"sseqid": "adapter"})
             .sort("adapter")
@@ -31,7 +38,7 @@ class SummariseBlastResults:
         adapter and action.
         """
         return (
-            self.hits.select(
+            hits.select(
                 sseqid=pl.col("sseqid"),
                 discard=pl.col("discard"),
                 trim=(pl.col("trim_l") + pl.col("trim_r")).cast(pl.Boolean),
@@ -55,7 +62,7 @@ class SummariseBlastResults:
         and the number of bases removed for each adapter and action.
         """
         return (
-            self.actions.with_columns(
+            actions.with_columns(
                 bases=pl.when(pl.col("action") == "discard")
                 .then(pl.col("read_length"))
                 .when(pl.col("action").str.contains("trim"))
@@ -80,7 +87,7 @@ class SummariseBlastResults:
         and the number of bases removed for each action.
         """
         return (
-            self.actions.with_columns(
+            actions.with_columns(
                 bases=pl.when(pl.col("action") == "discard")
                 .then(pl.col("read_length"))
                 .when(pl.col("action").str.contains("trim"))
@@ -96,7 +103,7 @@ class SummariseBlastResults:
             )
         )
 
-    def generate_summary(self) -> dict:
+    def generate_summary(self, outfile) -> dict:
         """
         Takes the raw BLAST table, the BLAST table filtered for "valid" hits
         using criteria from the YAML, and the per-read "actions" table,
@@ -114,43 +121,44 @@ class SummariseBlastResults:
         summary = {
             "detections": [],
             "hits": [],
-            "total_reads_discarded": 0,
-            "total_reads_trimmed": 0,
-            "total_bases_removed": 0,
+            "summary": {
+                "total_reads_discarded": 0,
+                "total_reads_trimmed": 0,
+                "total_bases_removed": 0,
+            },
+            "run_info": {
+                "blast_file": str(self.blast_file),
+                "yaml_file": str(self.adapter_yaml),
+                "hifi_trimmer": importlib.metadata.version("hifi_trimmer"),
+            },
         }
 
-        try:
-            blast_summary = self._summarise_blast(self.blast)
+        if self.blast_results is not None:
+            summary["detections"] = self._summarise_blast(self.blast_results).to_dicts()
+
+        if self.hits is not None:
             hits_summary = self._summarise_hits(self.hits)
+            adapter_actions_summary = self._summarise_adapter_actions(self.actions)
+            all_actions_summary = self._summarise_actions(self.actions)
 
-            if not blast_summary.is_empty():
-                summary["detections"] = blast_summary.to_dicts()
+            summary["hits"] = (
+                hits_summary.join(adapter_actions_summary, on=["adapter", "action"])
+                .sort(["adapter", "action"])
+                .to_dicts()
+            )
 
-                if not hits_summary.is_empty():
-                    adapter_actions_summary = self._summarise_adapter_actions(
-                        self.actions
-                    )
-                    all_actions_summary = self._summarise_actions(self.actions)
+            action_stats = {
+                action: all_actions_summary.filter(pl.col("action") == action)
+                for action in ["discard", "trim"]
+            }
 
-                    summary["hits"] = (
-                        hits_summary.join(
-                            adapter_actions_summary, on=["adapter", "action"]
-                        )
-                        .sort(["adapter", "action"])
-                        .to_dicts()
-                    )
+            summary["summary"].update(
+                {
+                    "total_bases_removed": all_actions_summary["bases_removed"].sum(),
+                    "total_reads_discarded": action_stats["discard"]["n_reads"].sum(),
+                    "total_reads_trimmed": action_stats["trim"]["n_reads"].sum(),
+                }
+            )
 
-                    summary["total_bases_removed"] = all_actions_summary[
-                        "bases_removed"
-                    ].sum()
-                    summary["total_reads_discarded"] = all_actions_summary.filter(
-                        pl.col("action") == "discard"
-                    )["n_reads"].sum()
-                    summary["total_reads_trimmed"] = all_actions_summary.filter(
-                        pl.col("action") == "trim"
-                    )["n_reads"].sum()
-
-        except pl.exceptions.NoDataError:
-            click.echo("Writing empty summary file!")
-
-        return summary
+        with open(outfile, "w") as f:
+            json.dump(summary, f, indent=4)

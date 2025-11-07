@@ -1,9 +1,9 @@
+from pathlib import Path
+
 import bgzip
 import click
-import json
-import re
 
-from hifi_trimmer.BamFilter import BamFilter
+from hifi_trimmer.BamFilterer import BamFilterer
 from hifi_trimmer.BlastProcessor import BlastProcessor
 from hifi_trimmer.SummariseBlastResults import SummariseBlastResults
 
@@ -17,7 +17,7 @@ def cli():
 
 @click.command("process_blast")
 @click.argument("blastout", type=click.Path(exists=True))
-@click.argument("adapter_yaml", type=click.File(mode="r"))
+@click.argument("adapter_yaml", type=click.Path(exists=True))
 @click.option(
     "-p",
     "--prefix",
@@ -69,8 +69,8 @@ def cli():
     help="Number of threads to use for compression",
 )
 def process_blast(
-    blastout: str,
-    adapter_yaml: click.File,
+    blastout: click.Path,
+    adapter_yaml: click.Path,
     prefix: str,
     min_length_after_trimming: int,
     end_length: int,
@@ -100,35 +100,39 @@ def process_blast(
     of adapter hits detected, counts identified after processing, and the total length of
     removed sequences per adapter to [prefix].summary.json.
     """
+    ## Set the prefix. If .blastout is in the filename, we drop
+    ## everything including and after it. Otherwise we just drop
+    ## the final extension.
     if prefix is None:
-        prefix = re.sub("\\.blastout.*$", "", blastout)
+        filename = Path(blastout).name
+        if ".blastout" in filename:
+            prefix = filename.split(".blastout")[0]
+        else:
+            prefix = Path(blastout).stem
 
     ## Process BLAST inputs
     results = BlastProcessor(
         blastout, adapter_yaml, end_length, min_length_after_trimming
     )
 
+    ## Write BED file
+    click.echo(f"Writing BED file: {prefix}.bed.gz")
+    with open(prefix + ".bed.gz", "wb") as f:
+        with bgzip.BGZipWriter(f, num_threads=threads) as out:
+            out.write(results.bed)
+
     ## Write output hits if requested
     if hits_flag and results.hits is not None and not results.hits.is_empty():
+        click.echo(f"Writing hits file: {prefix}.hits")
         results.generate_hits().write_csv(
             prefix + ".hits", separator="\t", include_header=False
         )
 
-    ## Write BED file
-    click.echo(f"Writing BED file: {prefix}.bed.gz")
-    out_bed = (
-        results.bed.write_csv(separator="\t", include_header=False).encode("utf-8")
-        if results.bed is not None
-        else b""
-    )
-    with open(prefix + ".bed.gz", "wb") as f:
-        with bgzip.BGZipWriter(f, num_threads=threads) as out:
-            out.write(out_bed)
-
+    ## Write summary if not disabled
     if not no_summary:
+        click.echo(f"Writing summary file: {prefix}.summary.gz")
         summary = SummariseBlastResults(results)
-        with open(prefix + ".summary.json", "w") as f:
-            json.dump(summary.generate_summary(), f, indent=4)
+        summary.generate_summary(prefix + ".summary.json")
 
 
 @click.command("filter_bam")
@@ -164,8 +168,9 @@ def filter_bam(
     """
     click.echo(f"Filtering {bam} using BED file: {bed}")
     click.echo(f"Writing the output to {outfile}.")
-    filterer = BamFilter(bam, bed, outfile, threads, fastq)
-    filterer.filter_bam_with_bed()
+
+    filterer = BamFilterer(threads, fastq)
+    filterer.filter_bam_with_bed(bam, bed, outfile)
 
 
 cli.add_command(process_blast)
