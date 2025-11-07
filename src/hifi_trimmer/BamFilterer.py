@@ -5,9 +5,7 @@ import pysam
 
 
 class BamFilterer:
-    def __init__(
-        self, bam: click.File, bed: str, outfile: str, threads: int, fastq: bool
-    ):
+    def __init__(self, threads: int, fastq: bool):
         self.threads = threads
         self.write_fastq = fastq
 
