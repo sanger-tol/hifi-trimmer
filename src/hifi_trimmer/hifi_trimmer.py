@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import bgzip
 import click
-import re
 
 from hifi_trimmer.BamFilterer import BamFilterer
 from hifi_trimmer.BlastProcessor import BlastProcessor
@@ -99,19 +100,20 @@ def process_blast(
     of adapter hits detected, counts identified after processing, and the total length of
     removed sequences per adapter to [prefix].summary.json.
     """
+    ## Set the prefix. If .blastout is in the filename, we drop
+    ## everything including and after it. Otherwise we just drop
+    ## the final extension.
     if prefix is None:
-        prefix = re.sub("\\.blastout.*$", "", blastout)
+        filename = Path(blastout).name
+        if ".blastout" in filename:
+            prefix = filename.split(".blastout")[0]
+        else:
+            prefix = Path(blastout).stem
 
     ## Process BLAST inputs
     results = BlastProcessor(
         blastout, adapter_yaml, end_length, min_length_after_trimming
     )
-
-    ## Write output hits if requested
-    if hits_flag and results.hits is not None and not results.hits.is_empty():
-        results.generate_hits().write_csv(
-            prefix + ".hits", separator="\t", include_header=False
-        )
 
     ## Write BED file
     click.echo(f"Writing BED file: {prefix}.bed.gz")
@@ -119,8 +121,16 @@ def process_blast(
         with bgzip.BGZipWriter(f, num_threads=threads) as out:
             out.write(results.bed)
 
+    ## Write output hits if requested
+    if hits_flag and results.hits is not None and not results.hits.is_empty():
+        click.echo(f"Writing hits file: {prefix}.hits")
+        results.generate_hits().write_csv(
+            prefix + ".hits", separator="\t", include_header=False
+        )
+
     ## Write summary if not disabled
     if not no_summary:
+        click.echo(f"Writing summary file: {prefix}.summary.gz")
         summary = SummariseBlastResults(results)
         summary.generate_summary(prefix + ".summary.json")
 
