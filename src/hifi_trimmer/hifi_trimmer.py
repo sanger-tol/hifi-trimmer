@@ -115,15 +115,17 @@ def process_blast(
 
     ## Write BED file
     click.echo(f"Writing BED file: {prefix}.bed.gz")
-    out_bed = (
-        results.bed.write_csv(separator="\t", include_header=False).encode("utf-8")
-        if results.bed is not None
-        else b""
-    )
     with open(prefix + ".bed.gz", "wb") as f:
         with bgzip.BGZipWriter(f, num_threads=threads) as out:
-            out.write(out_bed)
+            out.write(
+                results.bed.write_csv(separator="\t", include_header=False).encode(
+                    "utf-8"
+                )
+                if results.bed is not None
+                else b""
+            )
 
+    ## Write summary if not disabled
     if not no_summary:
         summary = SummariseBlastResults(results)
         summary.generate_summary(prefix + ".summary.json")
