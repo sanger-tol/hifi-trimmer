@@ -11,6 +11,8 @@
     ],
     "hits": [],
     "summary": {
+        "total_reads_processed": 5,
+        "total_bases_processed": 50316,
         "total_reads_discarded": 0,
         "total_reads_trimmed": 0,
         "total_bases_removed": 0
