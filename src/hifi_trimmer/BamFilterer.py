@@ -5,9 +5,10 @@ import pysam
 
 
 class BamFilterer:
-    def __init__(self, threads: int, fastq: bool):
+    def __init__(self, threads: int, fastq: bool, preserve_sam_tags: bool):
         self.threads = threads
         self.write_fastq = fastq
+        self.preserve_sam_tags = preserve_sam_tags
 
     def format_fastx_record(self, header: str, sequence: str, qual: str) -> str:
         """Format a header and sequence into FASTA format"""
@@ -29,6 +30,25 @@ class BamFilterer:
             seq = seq[:start] + seq[end:]
 
         return seq
+
+    def format_sam_flags(self, tags: list) -> str:
+        """
+        Format RG, BC, and QT tags from pysam for FASTQ header.
+
+        Args:
+            tags: List of tuples from pysam like [(tag, value, type), ...]
+
+        Returns:
+            String with space-separated tags (e.g., "RG:Z:value BC:Z:value")
+            or empty string if none of the tags exist
+        """
+        allowed_tags = {"RG", "BC", "QT"}
+        tag_strings = [
+            f"{tag}:{ftype}:{value}"
+            for tag, value, ftype in tags
+            if tag in allowed_tags
+        ]
+        return "\t".join(tag_strings)
 
     def filter_bam_with_bed(self, bam: click.File, bed: str, outfile: str):
         try:
@@ -60,6 +80,14 @@ class BamFilterer:
                 ## Then trim the sequence using the records pulled and write to fasta.
                 ## If not, write record straight to disk
                 for read in b.fetch(until_eof=True):
+                    if self.preserve_sam_tags:
+                        tag_string = self.format_sam_flags(
+                            read.get_tags(with_value_type=True)
+                        )
+                        output_header = "\t".join([read.query_name, tag_string])
+                    else:
+                        output_header = read.query_name
+
                     if r is not None and r["read"] == read.query_name:
                         ranges = [(int(r["start"]), int(r["end"]))]
 
@@ -81,7 +109,7 @@ class BamFilterer:
                         if len(sequence) > 0:
                             out.write(
                                 self.format_fastx_record(
-                                    read.query_name, sequence, qual
+                                    output_header, sequence, qual
                                 ).encode("utf-8")
                             )
                     else:
@@ -91,7 +119,7 @@ class BamFilterer:
 
                         out.write(
                             self.format_fastx_record(
-                                read.query_name, read.query_sequence, qual
+                                output_header, read.query_sequence, qual
                             ).encode("utf-8")
                         )
 

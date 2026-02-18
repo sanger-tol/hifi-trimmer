@@ -147,6 +147,13 @@ def process_blast(
     help="Write FASTQ instead of FASTA",
 )
 @click.option(
+    "-p",
+    "--preserve-sam-tags",
+    is_flag=True,
+    default=False,
+    help="Preserve SAM tags in the output FASTX headers.",
+)
+@click.option(
     "-t",
     "--threads",
     default=1,
@@ -155,7 +162,12 @@ def process_blast(
     help="Number of threads to use for compression",
 )
 def filter_bam(
-    bam: click.File, bed: str, outfile: click.File, threads: int, fastq: bool
+    bam: click.File,
+    bed: str,
+    outfile: click.File,
+    threads: int,
+    fastq: bool,
+    preserve_sam_tags: bool,
 ) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
@@ -169,7 +181,11 @@ def filter_bam(
     click.echo(f"Filtering {bam} using BED file: {bed}")
     click.echo(f"Writing the output to {outfile}.")
 
-    filterer = BamFilterer(threads, fastq)
+    filterer = BamFilterer(
+        threads=threads,
+        fastq=fastq,
+        preserve_sam_tags=preserve_sam_tags,
+    )
     filterer.filter_bam_with_bed(bam, bed, outfile)
 
 

@@ -101,11 +101,11 @@ Usage: hifi_trimmer filter_bam [OPTIONS] BAM BED OUTFILE
   OUTFILE: File to write the filtered reads to (bgzipped).
 
 Options:
-  -f, --fastq            Write FASTQ instead of FASTA
-  -t, --threads INTEGER  Number of threads to use for compression  [default:
-                         1]
-  --help                 Show this message and exit.
-
+  -f, --fastq              Write FASTQ instead of FASTA
+  -p, --preserve-sam-tags  Preserve SAM tags in the output FASTX headers. Equivalent to -t when using samtools fastq.
+  -t, --threads INTEGER    Number of threads to use for compression  [default:
+                           1]
+  --help                   Show this message and exit.
 ```
 
 ## Example
