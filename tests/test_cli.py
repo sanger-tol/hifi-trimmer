@@ -11,16 +11,13 @@ from hifi_trimmer.hifi_trimmer import cli
 def list_test_data(test_dir):
     """
     Get a list of files in the test directory and store them in
-    a dict indexed by extension.
+    a dict indexed by full filename.
     """
     test_data = {}
     for p in pathlib.Path(test_dir).iterdir():
-        if p.suffix == ".gz":
-            ext = p.suffixes[-2][1:]
-        else:
-            ext = p.suffix[1:]
-
-        test_data[ext] = str(p.absolute())
+        # Use the full filename as the key
+        key = p.name
+        test_data[key] = str(p.absolute())
 
     return test_data
 
@@ -69,8 +66,8 @@ def test_process_blast(tmp_path, testdata):
                 "process_blast",
                 "--prefix",
                 "test",
-                testdata["blastout"],
-                testdata["yaml"],
+                testdata["test.blastout.gz"],
+                testdata["test.yaml"],
             ],
         )
 
@@ -82,11 +79,11 @@ def test_process_blast(tmp_path, testdata):
         )
 
     comparison_summary = clean_summary_for_comparison(
-        json.loads(pathlib.Path(testdata["json"]).read_text())
+        json.loads(pathlib.Path(testdata["test.summary.json"]).read_text())
     )
 
     assert result.exit_code == 0
-    assert md5_bed == md5checksum(testdata["bed"])
+    assert md5_bed == md5checksum(testdata["test.bed.gz"])
     assert summary_dict == comparison_summary
 
 
@@ -97,13 +94,18 @@ def test_filter_bam(tmp_path, testdata):
     with runner.isolated_filesystem(temp_dir=tmp_path) as td:
         result = runner.invoke(
             cli,
-            ["filter_bam", testdata["bam"], testdata["bed"], "test.filtered.fa.gz"],
+            [
+                "filter_bam",
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
+                "test.filtered.fa.gz",
+            ],
         )
 
         md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fa.gz")
 
     assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["fa"])
+    assert md5_fasta == md5checksum(testdata["test.filtered.fa.gz"])
 
 
 @pytest.mark.parametrize("testdata", list_test_dirs())
@@ -115,8 +117,8 @@ def test_filter_bam_fastq(tmp_path, testdata):
             cli,
             [
                 "filter_bam",
-                testdata["bam"],
-                testdata["bed"],
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
                 "test.filtered.fq.gz",
                 "--fastq",
             ],
@@ -125,4 +127,49 @@ def test_filter_bam_fastq(tmp_path, testdata):
         md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fq.gz")
 
     assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["fq"])
+    assert md5_fasta == md5checksum(testdata["test.filtered.fq.gz"])
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_filter_bam_sam_tags_fastq(tmp_path, testdata):
+    runner = CliRunner()
+
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "filter_bam",
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
+                "test.filtered.tags.fq.gz",
+                "--fastq",
+                "--preserve-sam-tags",
+            ],
+        )
+
+        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.tags.fq.gz")
+
+    assert result.exit_code == 0
+    assert md5_fasta == md5checksum(testdata["test.filtered.tags.fq.gz"])
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_filter_bam_sam_tags(tmp_path, testdata):
+    runner = CliRunner()
+
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "filter_bam",
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
+                "test.filtered.tags.fa.gz",
+                "--preserve-sam-tags",
+            ],
+        )
+
+        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.tags.fa.gz")
+
+    assert result.exit_code == 0
+    assert md5_fasta == md5checksum(testdata["test.filtered.tags.fa.gz"])
