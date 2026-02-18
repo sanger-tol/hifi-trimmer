@@ -1,23 +1,23 @@
 {
-    "detections": [
-        {
-            "adapter": "gnl|uv|NGB00973.1:1-35",
-            "n_hits": 339
-        },
-        {
-            "adapter": "PacBio_ULI_adapter",
-            "n_hits": 24
-        }
-    ],
-    "hits": [],
-    "summary": {
-        "total_reads_discarded": 0,
-        "total_reads_trimmed": 0,
-        "total_bases_removed": 0
+  "detections": [
+    {
+      "adapter": "gnl|uv|NGB00973.1:1-35",
+      "n_hits": 339
     },
-    "run_info": {
-        "blast_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/no_valid_hits/test.blastout.gz",
-        "yaml_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/no_valid_hits/test.yaml",
-        "hifi_trimmer": "2.1.0"
+    {
+      "adapter": "PacBio_ULI_adapter",
+      "n_hits": 24
     }
+  ],
+  "hits": [],
+  "summary": {
+    "total_reads_discarded": 0,
+    "total_reads_trimmed": 0,
+    "total_bases_removed": 0
+  },
+  "run_info": {
+    "blast_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/no_valid_hits/test.blastout.gz",
+    "yaml_file": "/Users/jd42/Projects/hifi-trimmer/tests/data/no_valid_hits/test.yaml",
+    "hifi_trimmer": "2.2.0"
+  }
 }
