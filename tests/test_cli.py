@@ -2,10 +2,11 @@ import hashlib
 import json
 import pathlib
 
+import pysam
 import pytest
 from click.testing import CliRunner
 
-from hifi_trimmer.hifi_trimmer import cli
+from hifi_trimmer.cli import cli
 
 
 def list_test_data(test_dir):
@@ -20,6 +21,19 @@ def list_test_data(test_dir):
         test_data[key] = str(p.absolute())
 
     return test_data
+
+
+def bam_to_records(path):
+    """Extract (name, sequence, qualities) tuples from a BAM/SAM/CRAM file."""
+    with pysam.AlignmentFile(str(path), check_sq=False) as f:
+        return [
+            (
+                r.query_name,
+                r.query_sequence,
+                r.query_qualities.tobytes() if r.query_qualities else None,
+            )
+            for r in f.fetch(until_eof=True)
+        ]
 
 
 def list_test_dirs():
@@ -63,7 +77,7 @@ def test_process_blast(tmp_path, testdata):
         result = runner.invoke(
             cli,
             [
-                "process_blast",
+                "process-blast",
                 "--prefix",
                 "test",
                 testdata["test.blastout.gz"],
@@ -88,88 +102,23 @@ def test_process_blast(tmp_path, testdata):
 
 
 @pytest.mark.parametrize("testdata", list_test_dirs())
-def test_filter_bam(tmp_path, testdata):
+@pytest.mark.parametrize("fmt", ["sam", "bam", "cram"])
+def test_trim_fmt(tmp_path, testdata, fmt):
     runner = CliRunner()
-
+    outfile = f"test.filtered.{fmt}"
     with runner.isolated_filesystem(temp_dir=tmp_path) as td:
         result = runner.invoke(
             cli,
             [
-                "filter_bam",
+                "trim",
+                "-f",
+                fmt,
                 testdata["test.bam"],
                 testdata["test.bed.gz"],
-                "test.filtered.fa.gz",
+                outfile,
             ],
         )
-
-        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fa.gz")
-
-    assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["test.filtered.fa.gz"])
-
-
-@pytest.mark.parametrize("testdata", list_test_dirs())
-def test_filter_bam_fastq(tmp_path, testdata):
-    runner = CliRunner()
-
-    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
-        result = runner.invoke(
-            cli,
-            [
-                "filter_bam",
-                testdata["test.bam"],
-                testdata["test.bed.gz"],
-                "test.filtered.fq.gz",
-                "--fastq",
-            ],
+        assert result.exit_code == 0
+        assert bam_to_records(pathlib.Path(td) / outfile) == bam_to_records(
+            testdata[outfile]
         )
-
-        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fq.gz")
-
-    assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["test.filtered.fq.gz"])
-
-
-@pytest.mark.parametrize("testdata", list_test_dirs())
-def test_filter_bam_sam_tags_fastq(tmp_path, testdata):
-    runner = CliRunner()
-
-    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
-        result = runner.invoke(
-            cli,
-            [
-                "filter_bam",
-                testdata["test.bam"],
-                testdata["test.bed.gz"],
-                "test.filtered.tags.fq.gz",
-                "--fastq",
-                "--preserve-sam-tags",
-            ],
-        )
-
-        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.tags.fq.gz")
-
-    assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["test.filtered.tags.fq.gz"])
-
-
-@pytest.mark.parametrize("testdata", list_test_dirs())
-def test_filter_bam_sam_tags(tmp_path, testdata):
-    runner = CliRunner()
-
-    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
-        result = runner.invoke(
-            cli,
-            [
-                "filter_bam",
-                testdata["test.bam"],
-                testdata["test.bed.gz"],
-                "test.filtered.tags.fa.gz",
-                "--preserve-sam-tags",
-            ],
-        )
-
-        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.tags.fa.gz")
-
-    assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["test.filtered.tags.fa.gz"])

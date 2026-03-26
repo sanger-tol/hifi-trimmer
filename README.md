@@ -1,6 +1,6 @@
 # hifi_trimmer
 
-`hifi_trimmer` is a command-line tool for filtering and trimming extraneous adapter hits
+`hifi-trimmer` is a command-line tool for filtering and trimming extraneous adapter hits
 from a HiFi read set using a BLAST search against a fasta file of adapter sequences. It is
 designed to be highly configurable, with per-adapter settings to determine actions if
 the adapter is found at the ends of a read or in the middle. To improve reproducibility,
@@ -24,7 +24,7 @@ pip install hifi_trimmer
 ## Usage
 
 ```
-Usage: hifi_trimmer [OPTIONS] COMMAND [ARGS]...
+Usage: hifi-trimmer [OPTIONS] COMMAND [ARGS]...
 
   Main entry point for the tool.
 
@@ -33,21 +33,19 @@ Options:
   --help     Show this message and exit.
 
 Commands:
-  filter_bam     Filter the reads stored in a BAM file using the...
-  process_blast  Processes the input blastout file according to the...
+  process-blast  Processes the input blastout file according to the...
+  trim           Filter the reads stored in a BAM file using the...
 ```
 
 To process a blast output TSV to a BED file:
 
 ```
-Usage: hifi_trimmer process_blast [OPTIONS] BLASTOUT ADAPTER_YAML
+Usage: hifi-trimmer process-blast [OPTIONS] BLASTOUT ADAPTER_YAML
 
   Processes the input blastout file according to the adapter yaml key.
 
   BLASTOUT: tabular file resulting from a BLAST query of a readset against a
-  BLAST database of adapter sequences, run with -outfmt "6 std qlen". If the
-  qlen column is missing, lengths can be calculated by passing the --bam
-  option.
+  BLAST database of adapter sequences, run with -outfmt "6 std qlen".
 
   ADAPTER_YAML: yaml file containing a list with the following fields per
   adapter:
@@ -69,43 +67,41 @@ Usage: hifi_trimmer process_blast [OPTIONS] BLASTOUT ADAPTER_YAML
 Options:
   -p, --prefix TEXT               Output prefix for results. Defaults to the
                                   basename of the blastout if not provided.
-  -ml, --min_length_after_trimming INTEGER
+  -ml, --min-length-after-trimming INTEGER
                                   Minumum length of a read after trimming the
                                   ends in order not to be discarded  [default:
                                   300]
-  -el, --end_length INTEGER       Window size at either end of the read to be
+  -el, --end-length INTEGER       Window size at either end of the read to be
                                   considered as 'ends' for searching
                                   [default: 150]
-  -hf, --hits                     Write the hits identified using the given
+  --hits / --no-hits              Write the hits identified using the given
                                   adapter specifications to TSV. The format is
                                   standard BLAST outfmt 6 with the following
                                   extra columns: read_length (int), discard
                                   (bool), trim_l (bool), trim_r (bool)
-  --no-summary                    Skip writing a summary TSV with the number
+  --no-summary                    Skip writing a summary JSON with the number
                                   of hits for each adapter
   -t, --threads INTEGER           Number of threads to use for compression
                                   [default: 1]
   --help                          Show this message and exit.
 ```
 
-To filter a bam file using the BED file:
+To filter a BAM file using the BED file:
 
 ```
-Usage: hifi_trimmer filter_bam [OPTIONS] BAM BED OUTFILE
+Usage: hifi-trimmer trim [OPTIONS] BAM BED [OUTFILE]
 
   Filter the reads stored in a BAM file using the appropriate BED file
   produced by blastout_to_bed and write to a bgzipped fasta file.
 
   BAM: BAM file in which to filter reads
   BED: BED file describing regions of the read set to exclude.
-  OUTFILE: File to write the filtered reads to (bgzipped).
+  OUTFILE: Output trimmed BAM file. Defaults to stdout.
 
 Options:
-  -f, --fastq              Write FASTQ instead of FASTA
-  -p, --preserve-sam-tags  Preserve SAM tags in the output FASTX headers. Equivalent to -t when using samtools fastq.
-  -t, --threads INTEGER    Number of threads to use for compression  [default:
-                           1]
-  --help                   Show this message and exit.
+  -t, --threads INTEGER        Number of threads to use for compression
+                               [default: 1]
+  -f, --format [sam|bam|cram]  Output file format.  [default: bam]
 ```
 
 ## Example
@@ -137,14 +133,14 @@ the YAML.
   end_length: 18        // minimum match length for a match at the end of the read
 ```
 
-Then run `blastout_to_bed` to generate a BED file:
+Then run `process-blast` to generate a BED file:
 
 ```
-hifi_trimmer process_blast /path/to/blastout.gz /path/to/yaml
+hifi-trimmer process-blast /path/to/blastout.gz /path/to/yaml
 ```
 
-Then filter the bam file using the BED file:
+Then filter the BAM file using the BED file:
 
 ```
-hifi_trimmer filter_bam /path/to/bam /path/to/bed /path/to/final/fasta.gz
+hifi-trimmer trim /path/to/bam /path/to/bed /path/to/final/file.bam
 ```
