@@ -173,7 +173,6 @@ def process_blast(
     "--format-opts",
     type=str,
     help="Comma-separated list of format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS).",
-    multiple=True,
 )
 def trim(
     bam: click.File,
