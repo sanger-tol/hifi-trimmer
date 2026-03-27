@@ -196,7 +196,7 @@ def trim(
     filterer = BamTrimmer(
         threads=threads,
         format=format,
-        format_opts=format_opts.split(","),
+        format_opts=format_opts.split(",") if format_opts else [],
     )
     filterer.trim_bam_with_bed(bam, bed, outfile)
 
