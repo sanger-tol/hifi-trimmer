@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Replace the `filter_bam` subcommand with a `trim` command, that takes an input BAM and BED file and writes out a BAM file with trimmed query sequences. It writes to standard output by default - the FASTA outout can be recovered by piping into `samtools fasta` or `samtools fastq`.
+- Replace the `filter_bam` subcommand with a `trim` command, that takes an input BAM and BED file and writes out a BAM file with trimmed query sequences. It writes to standard output by default - the FASTA output can be recovered by piping into `samtools fasta` or `samtools fastq`.
+  - the `--format` option allows direct writing of SAM, BAM or CRAM format
+  - Added a `--format-opts` that allows specification of HTSLib flags for formatting: https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS
 
 ### Changed
 
