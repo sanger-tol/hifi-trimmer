@@ -3,6 +3,18 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [[3.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v2.2.0)] - [2025-11-06]
+
+### Added
+
+- Replace the `filter_bam` subcommand with a `trim` command, that takes an input BAM and BED file and writes out a BAM file with trimmed query sequences. It writes to standard output by default - the FASTA outout can be recovered by piping into `samtools fasta` or `samtools fastq`.
+
+### Changed
+
+- Replaced all underscores in commands with hyphens:
+  - `hifi_trimmer` is now `hifi-trimmer`
+  - `process_blast` is `process-blast`
+
 ## [[2.2.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v2.2.0)] - [2025-11-06]
 
 ### Added

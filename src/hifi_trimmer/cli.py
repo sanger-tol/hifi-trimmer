@@ -1,9 +1,11 @@
+import sys
 from pathlib import Path
 
 import bgzip
 import click
+from loguru import logger
 
-from hifi_trimmer.BamFilterer import BamFilterer
+from hifi_trimmer.BamTrimmer import BamTrimmer
 from hifi_trimmer.BlastProcessor import BlastProcessor
 from hifi_trimmer.SummariseBlastResults import SummariseBlastResults
 
@@ -12,12 +14,17 @@ from hifi_trimmer.SummariseBlastResults import SummariseBlastResults
 @click.version_option(package_name="hifi_trimmer")
 def cli():
     """Main entry point for the tool."""
-    pass
+    logger.remove()
+    logger.add(
+        sys.stderr,
+        format="[{time:HH:mm:ss}] | hifi-trimmer | {level} - {message}",
+        level="INFO",
+    )
 
 
-@click.command("process_blast")
+@click.command("process-blast")
 @click.argument("blastout", type=click.Path(exists=True))
-@click.argument("adapter_yaml", type=click.Path(exists=True))
+@click.argument("adapter-yaml", type=click.Path(exists=True))
 @click.option(
     "-p",
     "--prefix",
@@ -28,7 +35,7 @@ def cli():
 )
 @click.option(
     "-ml",
-    "--min_length_after_trimming",
+    "--min-length-after-trimming",
     default=300,
     show_default=True,
     type=int,
@@ -36,15 +43,14 @@ def cli():
 )
 @click.option(
     "-el",
-    "--end_length",
+    "--end-length",
     default=150,
     show_default=True,
     type=int,
     help="Window size at either end of the read to be considered as 'ends' for searching",
 )
 @click.option(
-    "-hf",
-    "--hits",
+    "--hits/--no-hits",
     "hits_flag",
     default=False,
     is_flag=True,
@@ -116,42 +122,35 @@ def process_blast(
     )
 
     ## Write BED file
-    click.echo(f"Writing BED file: {prefix}.bed.gz")
+    logger.info(f"Writing BED file: {prefix}.bed.gz")
     with open(prefix + ".bed.gz", "wb") as f:
         with bgzip.BGZipWriter(f, num_threads=threads) as out:
             out.write(results.bed)
 
     ## Write output hits if requested
     if hits_flag and results.hits is not None and not results.hits.is_empty():
-        click.echo(f"Writing hits file: {prefix}.hits")
-        results.generate_hits().write_csv(
+        logger.info(f"Writing hits file: {prefix}.hits")
+        results.generate_hits().collect().write_csv(
             prefix + ".hits", separator="\t", include_header=False
         )
 
     ## Write summary if not disabled
     if not no_summary:
-        click.echo(f"Writing summary file: {prefix}.summary.gz")
+        logger.info(f"Writing summary file: {prefix}.summary.gz")
         summary = SummariseBlastResults(results)
         summary.generate_summary(prefix + ".summary.json")
 
 
-@click.command("filter_bam")
+@click.command("trim")
 @click.argument("bam", type=click.File(mode="rb"))
 @click.argument("bed", type=click.Path(exists=True))
-@click.argument("outfile", default=None, required=True, type=click.File(mode="wb"))
 @click.option(
-    "-f",
-    "--fastq",
-    is_flag=True,
-    default=False,
-    help="Write FASTQ instead of FASTA",
-)
-@click.option(
-    "-p",
-    "--preserve-sam-tags",
-    is_flag=True,
-    default=False,
-    help="Preserve SAM tags in the output FASTX headers.",
+    "-o",
+    "--outfile",
+    default="-",
+    required=False,
+    type=click.File(mode="wb"),
+    help="The output file to write to. Defaults to stdout if not specified.",
 )
 @click.option(
     "-t",
@@ -161,13 +160,27 @@ def process_blast(
     type=int,
     help="Number of threads to use for compression",
 )
-def filter_bam(
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["sam", "bam", "cram"]),
+    default="bam",
+    show_default=True,
+    help="Output file format.",
+)
+@click.option(
+    "-h",
+    "--format-opts",
+    type=str,
+    help="Comma-separated list of format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS).",
+)
+def trim(
     bam: click.File,
     bed: str,
     outfile: click.File,
     threads: int,
-    fastq: bool,
-    preserve_sam_tags: bool,
+    format: str,
+    format_opts: str,
 ) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
@@ -176,21 +189,20 @@ def filter_bam(
     \b
     BAM: BAM file in which to filter reads
     BED: BED file describing regions of the read set to exclude.
-    OUTFILE: File to write the filtered reads to (bgzipped).
     """
-    click.echo(f"Filtering {bam} using BED file: {bed}")
-    click.echo(f"Writing the output to {outfile}.")
+    logger.info(f"Filtering {bam.name} using BED file: {bed}")
+    logger.info(f"Writing the output to {outfile.name}.")
 
-    filterer = BamFilterer(
+    filterer = BamTrimmer(
         threads=threads,
-        fastq=fastq,
-        preserve_sam_tags=preserve_sam_tags,
+        format=format,
+        format_opts=format_opts.split(",") if format_opts else [],
     )
-    filterer.filter_bam_with_bed(bam, bed, outfile)
+    filterer.trim_bam_with_bed(bam, bed, outfile)
 
 
 cli.add_command(process_blast)
-cli.add_command(filter_bam)
+cli.add_command(trim)
 
 if __name__ == "__main__":
     cli()
