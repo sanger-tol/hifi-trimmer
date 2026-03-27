@@ -150,6 +150,7 @@ def process_blast(
     default="-",
     required=False,
     type=click.File(mode="wb"),
+    help="The output file to write to. Defaults to stdout if not specified.",
 )
 @click.option(
     "-t",
@@ -190,7 +191,6 @@ def trim(
     \b
     BAM: BAM file in which to filter reads
     BED: BED file describing regions of the read set to exclude.
-    OUTFILE: Output trimmed BAM file. Defaults to stdout.
     """
     logger.info(f"Filtering {bam.name} using BED file: {bed}")
     logger.info(f"Writing the output to {outfile.name}.")

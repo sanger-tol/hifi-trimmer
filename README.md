@@ -96,10 +96,10 @@ Usage: hifi-trimmer trim [OPTIONS] BAM BED
 
   BAM: BAM file in which to filter reads
   BED: BED file describing regions of the read set to exclude.
-  OUTFILE: Output trimmed BAM file. Defaults to stdout.
 
 Options:
-  -o, --outfile FILENAME
+  -o, --outfile FILENAME       The output file to write to. Defaults to stdout
+                               if not specified.
   -t, --threads INTEGER        Number of threads to use for compression
                                [default: 1]
   -f, --format [sam|bam|cram]  Output file format.  [default: bam]
