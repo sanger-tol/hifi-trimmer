@@ -130,7 +130,7 @@ def process_blast(
     ## Write output hits if requested
     if hits_flag and results.hits is not None and not results.hits.is_empty():
         logger.info(f"Writing hits file: {prefix}.hits")
-        results.generate_hits().write_csv(
+        results.generate_hits().collect().write_csv(
             prefix + ".hits", separator="\t", include_header=False
         )
 
