@@ -1,4 +1,4 @@
-# hifi_trimmer
+# hifi-trimmer
 
 `hifi-trimmer` is a command-line tool for filtering and trimming extraneous adapter hits
 from a HiFi read set using a BLAST search against a fasta file of adapter sequences. It is
