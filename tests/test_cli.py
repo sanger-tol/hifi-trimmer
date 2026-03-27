@@ -113,9 +113,10 @@ def test_trim_fmt(tmp_path, testdata, fmt):
                 "trim",
                 "-f",
                 fmt,
+                "-o",
+                outfile,
                 testdata["test.bam"],
                 testdata["test.bed.gz"],
-                outfile,
             ],
         )
         assert result.exit_code == 0

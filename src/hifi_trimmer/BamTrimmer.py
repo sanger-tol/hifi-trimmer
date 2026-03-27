@@ -1,5 +1,6 @@
 import sys
 from importlib.metadata import version
+from pathlib import Path
 
 import click
 import polars as pl
@@ -8,13 +9,14 @@ from loguru import logger
 
 
 class BamTrimmer:
-    def __init__(self, threads: int, format: str):
+    def __init__(self, threads: int, format: str, format_opts: list | None):
         self.threads = threads
         self.output_mode = "w"
         if format == "bam":
             self.output_mode = "wb"
         elif format == "cram":
             self.output_mode = "wc"
+        self.format_opts = format_opts
 
     def trim_positions(self, seq: str, ranges: list) -> str:
         """Trim a sequence (DNA or qual string) to remove the positions specified in ranges.
@@ -73,7 +75,16 @@ class BamTrimmer:
             filters = iter([])
             r = next(filters, None)
 
-        with pysam.AlignmentFile(bam, "rb", check_sq=False, require_index=False) as b:
+        extension = Path(bam.name).suffix[1:].lower()
+        in_read_mode = "r"
+        if extension == "bam":
+            in_read_mode = "rb"
+        elif extension == "cram":
+            in_read_mode = "rc"
+
+        with pysam.AlignmentFile(
+            bam, in_read_mode, check_sq=False, require_index=False
+        ) as b:
             header = self.generate_PG_line(b.header.to_dict())
 
             with pysam.AlignmentFile(
@@ -81,6 +92,7 @@ class BamTrimmer:
                 self.output_mode,
                 header=pysam.AlignmentHeader.from_dict(header),
                 threads=self.threads,
+                format_options=self.format_opts,
             ) as out:
                 for read in b.fetch(until_eof=True):
                     if r is not None and r["read"] == read.query_name:

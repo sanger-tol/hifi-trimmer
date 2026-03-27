@@ -144,7 +144,13 @@ def process_blast(
 @click.command("trim")
 @click.argument("bam", type=click.File(mode="rb"))
 @click.argument("bed", type=click.Path(exists=True))
-@click.argument("outfile", default="-", required=False, type=click.File(mode="wb"))
+@click.option(
+    "-o",
+    "--outfile",
+    default="-",
+    required=False,
+    type=click.File(mode="wb"),
+)
 @click.option(
     "-t",
     "--threads",
@@ -161,12 +167,21 @@ def process_blast(
     show_default=True,
     help="Output file format.",
 )
+@click.option(
+    "-h",
+    "--format-opt",
+    "format_opts",
+    type=str,
+    help="key=value pairs of options to pass to htslib. Can be specified multiple times if multiple options are required.",
+    multiple=True,
+)
 def trim(
     bam: click.File,
     bed: str,
     outfile: click.File,
     threads: int,
     format: str,
+    format_opts: list,
 ) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
@@ -180,9 +195,23 @@ def trim(
     logger.info(f"Filtering {bam.name} using BED file: {bed}")
     logger.info(f"Writing the output to {outfile.name}.")
 
+    def _is_valid_key_value(opt: str) -> bool:
+        if "=" not in opt:
+            return False
+        key, value = opt.split("=", 1)
+        return bool(key) and bool(value)
+
+    if format_opts is not None:
+        invalid = [opt for opt in format_opts if not _is_valid_key_value(opt)]
+        if invalid:
+            raise ValueError(
+                f"Error: invalid format options (expected key=value): {', '.join(invalid)}"
+            )
+
     filterer = BamTrimmer(
         threads=threads,
         format=format,
+        format_opts=format_opts,
     )
     filterer.trim_bam_with_bed(bam, bed, outfile)
 
