@@ -89,7 +89,7 @@ Options:
 To filter a BAM file using the BED file:
 
 ```
-Usage: hifi-trimmer trim [OPTIONS] BAM BED [OUTFILE]
+Usage: hifi-trimmer trim [OPTIONS] BAM BED
 
   Filter the reads stored in a BAM file using the appropriate BED file
   produced by blastout_to_bed and write to a bgzipped fasta file.
@@ -99,9 +99,14 @@ Usage: hifi-trimmer trim [OPTIONS] BAM BED [OUTFILE]
   OUTFILE: Output trimmed BAM file. Defaults to stdout.
 
 Options:
+  -o, --outfile FILENAME
   -t, --threads INTEGER        Number of threads to use for compression
                                [default: 1]
   -f, --format [sam|bam|cram]  Output file format.  [default: bam]
+  -h, --format-opt TEXT        key=value pairs of options to pass to htslib.
+                               Can be specified multiple times if multiple
+                               options are required.
+  --help                       Show this message and exit.
 ```
 
 ## Example
