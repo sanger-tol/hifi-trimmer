@@ -16,7 +16,9 @@ class BamTrimmer:
             self.output_mode = "wb"
         elif format == "cram":
             self.output_mode = "wc"
-        self.format_opts = format_opts
+        self.format_opts = (
+            [opt.encode() for opt in format_opts] if format_opts else None
+        )
 
     def trim_positions(self, seq: str, ranges: list) -> str:
         """Trim a sequence (DNA or qual string) to remove the positions specified in ranges.
