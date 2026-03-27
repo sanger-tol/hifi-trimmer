@@ -172,7 +172,7 @@ def process_blast(
     "--format-opt",
     "format_opts",
     type=str,
-    help="key=value pairs of options to pass to htslib. Can be specified multiple times if multiple options are required.",
+    help="Format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS). Can be specified multiple times if multiple options are required.",
     multiple=True,
 )
 def trim(
@@ -194,19 +194,6 @@ def trim(
     """
     logger.info(f"Filtering {bam.name} using BED file: {bed}")
     logger.info(f"Writing the output to {outfile.name}.")
-
-    def _is_valid_key_value(opt: str) -> bool:
-        if "=" not in opt:
-            return False
-        key, value = opt.split("=", 1)
-        return bool(key) and bool(value)
-
-    if format_opts is not None:
-        invalid = [opt for opt in format_opts if not _is_valid_key_value(opt)]
-        if invalid:
-            raise ValueError(
-                f"Error: invalid format options (expected key=value): {', '.join(invalid)}"
-            )
 
     filterer = BamTrimmer(
         threads=threads,
