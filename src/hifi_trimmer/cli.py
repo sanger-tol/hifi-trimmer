@@ -170,8 +170,7 @@ def process_blast(
 )
 @click.option(
     "-h",
-    "--format-opt",
-    "format_opts",
+    "--format-opts",
     type=str,
     help="Format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS). Can be specified multiple times if multiple options are required.",
     multiple=True,
@@ -182,7 +181,7 @@ def trim(
     outfile: click.File,
     threads: int,
     format: str,
-    format_opts: list,
+    format_opts: str,
 ) -> None:
     """
     Filter the reads stored in a BAM file using the appropriate BED file produced
@@ -198,7 +197,7 @@ def trim(
     filterer = BamTrimmer(
         threads=threads,
         format=format,
-        format_opts=list(format_opts),
+        format_opts=format_opts.split(","),
     )
     filterer.trim_bam_with_bed(bam, bed, outfile)
 
