@@ -172,7 +172,7 @@ def process_blast(
     "-h",
     "--format-opts",
     type=str,
-    help="Format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS). Can be specified multiple times if multiple options are required.",
+    help="Comma-separated list of format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS).",
     multiple=True,
 )
 def trim(

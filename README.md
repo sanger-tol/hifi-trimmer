@@ -103,11 +103,10 @@ Options:
   -t, --threads INTEGER        Number of threads to use for compression
                                [default: 1]
   -f, --format [sam|bam|cram]  Output file format.  [default: bam]
-  -h, --format-opt TEXT        Format options to pass to htslib for writing
-                               the output (see https://www.htslib.org/doc/samt
-                               ools.html#GLOBAL_COMMAND_OPTIONS). Can be
-                               specified multiple times if multiple options
-                               are required.
+  -h, --format-opts TEXT       Comma-separated list of format options to pass
+                               to htslib for writing the output (see https://w
+                               ww.htslib.org/doc/samtools.html#GLOBAL_COMMAND_
+                               OPTIONS).
   --help                       Show this message and exit.
 ```
 
