@@ -1,8 +1,8 @@
 from pathlib import Path
 
-import click
 import polars as pl
 import yaml
+from loguru import logger
 
 
 class BlastProcessor:
@@ -24,7 +24,7 @@ class BlastProcessor:
         try:
             self._read_blast(blast).head(1).collect()
         except pl.exceptions.NoDataError:
-            click.echo(f"WARNING: {blast} was empty! BED output will be empty.")
+            logger.warning(f"{blast} was empty! BED output will be empty.")
             return
 
         ## Read raw data
@@ -41,7 +41,7 @@ class BlastProcessor:
 
         if self.hits.is_empty():
             self.hits = None
-            click.echo(
+            logger.warning(
                 "WARNING: After filtering, no BLAST hits remain. BED output will be empty."
             )
             return

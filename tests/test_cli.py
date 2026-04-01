@@ -2,27 +2,38 @@ import hashlib
 import json
 import pathlib
 
+import pysam
 import pytest
 from click.testing import CliRunner
 
-from hifi_trimmer.hifi_trimmer import cli
+from hifi_trimmer.cli import cli
 
 
 def list_test_data(test_dir):
     """
     Get a list of files in the test directory and store them in
-    a dict indexed by extension.
+    a dict indexed by full filename.
     """
     test_data = {}
     for p in pathlib.Path(test_dir).iterdir():
-        if p.suffix == ".gz":
-            ext = p.suffixes[-2][1:]
-        else:
-            ext = p.suffix[1:]
-
-        test_data[ext] = str(p.absolute())
+        # Use the full filename as the key
+        key = p.name
+        test_data[key] = str(p.absolute())
 
     return test_data
+
+
+def bam_to_records(path):
+    """Extract (name, sequence, qualities) tuples from a BAM/SAM/CRAM file."""
+    with pysam.AlignmentFile(str(path), check_sq=False) as f:
+        return [
+            (
+                r.query_name,
+                r.query_sequence,
+                r.query_qualities.tobytes() if r.query_qualities else None,
+            )
+            for r in f.fetch(until_eof=True)
+        ]
 
 
 def list_test_dirs():
@@ -66,11 +77,11 @@ def test_process_blast(tmp_path, testdata):
         result = runner.invoke(
             cli,
             [
-                "process_blast",
+                "process-blast",
                 "--prefix",
                 "test",
-                testdata["blastout"],
-                testdata["yaml"],
+                testdata["test.blastout.gz"],
+                testdata["test.yaml"],
             ],
         )
 
@@ -82,47 +93,33 @@ def test_process_blast(tmp_path, testdata):
         )
 
     comparison_summary = clean_summary_for_comparison(
-        json.loads(pathlib.Path(testdata["json"]).read_text())
+        json.loads(pathlib.Path(testdata["test.summary.json"]).read_text())
     )
 
     assert result.exit_code == 0
-    assert md5_bed == md5checksum(testdata["bed"])
+    assert md5_bed == md5checksum(testdata["test.bed.gz"])
     assert summary_dict == comparison_summary
 
 
 @pytest.mark.parametrize("testdata", list_test_dirs())
-def test_filter_bam(tmp_path, testdata):
+@pytest.mark.parametrize("fmt", ["sam", "bam", "cram"])
+def test_trim_fmt(tmp_path, testdata, fmt):
     runner = CliRunner()
-
-    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
-        result = runner.invoke(
-            cli,
-            ["filter_bam", testdata["bam"], testdata["bed"], "test.filtered.fa.gz"],
-        )
-
-        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fa.gz")
-
-    assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["fa"])
-
-
-@pytest.mark.parametrize("testdata", list_test_dirs())
-def test_filter_bam_fastq(tmp_path, testdata):
-    runner = CliRunner()
-
+    outfile = f"test.filtered.{fmt}"
     with runner.isolated_filesystem(temp_dir=tmp_path) as td:
         result = runner.invoke(
             cli,
             [
-                "filter_bam",
-                testdata["bam"],
-                testdata["bed"],
-                "test.filtered.fq.gz",
-                "--fastq",
+                "trim",
+                "-f",
+                fmt,
+                "-o",
+                outfile,
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
             ],
         )
-
-        md5_fasta = md5checksum(pathlib.Path(td) / "test.filtered.fq.gz")
-
-    assert result.exit_code == 0
-    assert md5_fasta == md5checksum(testdata["fq"])
+        assert result.exit_code == 0
+        assert bam_to_records(pathlib.Path(td) / outfile) == bam_to_records(
+            testdata[outfile]
+        )

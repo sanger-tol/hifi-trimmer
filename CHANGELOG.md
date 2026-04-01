@@ -3,7 +3,27 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [[2.1.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.3.0)] - [2025-11-06]
+## [[3.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v2.2.0)] - [2025-11-06]
+
+### Added
+
+- Replace the `filter_bam` subcommand with a `trim` command, that takes an input BAM and BED file and writes out a BAM file with trimmed query sequences. It writes to standard output by default - the FASTA output can be recovered by piping into `samtools fasta` or `samtools fastq`.
+  - the `--format` option allows direct writing of SAM, BAM or CRAM format
+  - Added a `--format-opts` that allows specification of HTSLib flags for formatting: https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS
+
+### Changed
+
+- Replaced all underscores in commands with hyphens:
+  - `hifi_trimmer` is now `hifi-trimmer`
+  - `process_blast` is `process-blast`
+
+## [[2.2.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v2.2.0)] - [2025-11-06]
+
+### Added
+
+- Added the `-p/--preserve-sam-tags` flag to include the RG, BC and QT flags in the output FASTA header from `filter_bam`.
+
+## [[2.1.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v2.1.0)] - [2025-11-06]
 
 ### Added
 
@@ -13,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Move the overall summary entries in the summary JSON file to a sub-dict called "summary"
 
-## [[2.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v1.3.0)] - [2025-11-06]
+## [[2.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v2.0.0)] - [2025-11-06]
 
 ### Fixed
 - Refactor code under-the-hood to use classes instead of a more functional approach to improve maintanability

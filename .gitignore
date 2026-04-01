@@ -4,3 +4,4 @@
 uv.lock
 .pytest_cache/
 dist/
+.DS_Store
