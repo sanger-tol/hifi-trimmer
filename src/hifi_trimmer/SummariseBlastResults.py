@@ -19,7 +19,7 @@ class SummariseBlastResults:
         self.actions = result.actions
         self.end_length = result.end_length
 
-    def _summarise_blast(self, blast) -> pl.DataFrame:
+    def _summarise_blast_detections(self, blast) -> pl.DataFrame:
         """
         Summarise a raw BLAST table, returning the number of hits by
         adapter.
@@ -29,6 +29,21 @@ class SummariseBlastResults:
             .len("n_hits")
             .rename({"sseqid": "adapter"})
             .sort("adapter")
+            .collect()
+        )
+
+    def _summarise_blast_input(self, blast) -> pl.DataFrame:
+        """
+        Summarise a raw BLAST table, returning the number of hits by
+        adapter.
+        """
+        return (
+            blast.select(["qseqid", "read_length"])
+            .unique()
+            .select(
+                n_reads_processed=pl.col("qseqid").unique().len(),
+                total_bases_processed=pl.col("read_length").sum(),
+            )
             .collect()
         )
 
@@ -122,6 +137,8 @@ class SummariseBlastResults:
             "detections": [],
             "hits": [],
             "summary": {
+                "total_reads_processed": 0,
+                "total_bases_processed": 0,
                 "total_reads_discarded": 0,
                 "total_reads_trimmed": 0,
                 "total_bases_removed": 0,
@@ -134,7 +151,18 @@ class SummariseBlastResults:
         }
 
         if self.blast_results is not None:
-            summary["detections"] = self._summarise_blast(self.blast_results).to_dicts()
+            input_stats = self._summarise_blast_input(self.blast_results).to_dicts()
+
+            summary["detections"] = self._summarise_blast_detections(
+                self.blast_results
+            ).to_dicts()
+
+            summary["summary"].update(
+                {
+                    "total_reads_processed": input_stats[0]["n_reads_processed"],
+                    "total_bases_processed": input_stats[0]["total_bases_processed"],
+                }
+            )
 
         if self.hits is not None:
             hits_summary = self._summarise_hits(self.hits)
