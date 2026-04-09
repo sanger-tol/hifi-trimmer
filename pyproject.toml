@@ -1,6 +1,6 @@
 [project]
 name = "hifi_trimmer"
-version = "3.0.0"
+version = "3.1.0"
 authors = [{ name = "Jim Downie", email = "jd42@sanger.ac.uk" }]
 description = """
 hifi-trimmer is a tool for filtering and trimming extraneous adapter hits from a
