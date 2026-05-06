@@ -212,24 +212,36 @@ class BlastProcessor:
         hits: pl.DataFrame of blast hits with matches
         end_length: length of window at either end of read which is examined for trimming
         """
-        hits_actions = hits.with_columns(
-            read_length_after_trimming=(
-                pl.col("read_length")
-                - pl.col("trim_l").cast(pl.UInt32) * pl.col("qend")
-                - pl.col("trim_r").cast(pl.UInt32)
-                * (pl.col("read_length") - pl.col("qstart"))
-            )
-            .get(pl.col("evalue").arg_min())
-            .over("qseqid")
-        ).with_columns(
-            gen_action=(
-                pl.when(
-                    pl.col("discard").any()
-                    | (pl.col("read_length_after_trimming") < self.min_length)
+        hits_actions = (
+            hits.with_columns(
+                trim_l_length=pl.when(pl.col("trim_l"))
+                .then(pl.col("qend").filter(pl.col("qend") <= self.end_length).max())
+                .otherwise(pl.lit(0))
+                .over("qseqid"),
+                trim_r_length=pl.when(pl.col("trim_r"))
+                .then(
+                    (pl.col("read_length") - pl.col("qstart"))
+                    .filter(pl.col("qstart") >= pl.col("read_length") - self.end_length)
+                    .max()
                 )
-                .then(pl.lit("discard"))
-                .otherwise(pl.lit("trim"))
-                .over("qseqid")
+                .otherwise(pl.lit(0))
+                .over("qseqid"),
+            )
+            .with_columns(
+                read_length_after_trimming=pl.col("read_length")
+                - pl.col("trim_l_length")
+                - pl.col("trim_r_length")
+            )
+            .with_columns(
+                gen_action=(
+                    pl.when(
+                        pl.col("discard").any()
+                        | (pl.col("read_length_after_trimming") < self.min_length)
+                    )
+                    .then(pl.lit("discard"))
+                    .otherwise(pl.lit("trim"))
+                    .over("qseqid")
+                )
             )
         )
 
@@ -251,7 +263,7 @@ class BlastProcessor:
                 pl.col("sseqid", "qstart", "qend", "read_length")
                 .filter(pl.col("qend") <= self.end_length)
                 .get(
-                    pl.col("evalue").filter(pl.col("qend") <= self.end_length).arg_min()
+                    pl.col("qend").filter(pl.col("qend") <= self.end_length).arg_min()
                 ),
                 action=pl.lit("trim_l"),
             )
@@ -264,7 +276,7 @@ class BlastProcessor:
                 pl.col("sseqid", "qstart", "qend", "read_length")
                 .filter(pl.col("qstart") >= pl.col("read_length") - self.end_length)
                 .get(
-                    pl.col("evalue")
+                    pl.col("qstart")
                     .filter(pl.col("qstart") >= pl.col("read_length") - self.end_length)
                     .arg_min()
                 ),
@@ -296,6 +308,9 @@ class BlastProcessor:
         ).sort("qseqid", "start")
 
     def generate_hits(self) -> pl.DataFrame:
+        if self.hits is None:
+            return pl.DataFrame()
+
         return self.hits.select(
             [
                 "qseqid",
