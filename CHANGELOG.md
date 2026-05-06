@@ -3,6 +3,18 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [[4.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v4.0.0)] - [2026-05-06]
+
+### Added
+
+- Instead of trimming a 150 bp window regardless of the hit length, hifi-trimmer now trims just the best-matching
+  hit from the end of the read.
+
+### Fixed
+
+- `--hits` now no longer produces an error when requrested in `process-blast`.
+- Trimming uses the deepest identified valid hit rather than the hit with the smallest evalue.
+
 ## [[3.1.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v3.1.0)] - [2025-11-06]
 
 ### Added
