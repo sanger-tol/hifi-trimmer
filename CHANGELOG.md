@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `--hits` now no longer produces an error when requrested in `process-blast`.
+- Trimming uses the deepest identified valid hit rather than the hit with the smallest evalue.
 
 ## [[3.1.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v3.1.0)] - [2025-11-06]
 
