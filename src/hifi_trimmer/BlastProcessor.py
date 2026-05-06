@@ -283,7 +283,7 @@ class BlastProcessor:
             )
             .then(pl.lit(0))
             .when(pl.col("action") == "trim_r")
-            .then(pl.col("qstart") + 1)
+            .then(pl.col("qstart"))
             .otherwise(pl.lit(0)),
             end=pl.when(
                 (pl.col("action") == "discard") | (pl.col("action") == "trim_r")
