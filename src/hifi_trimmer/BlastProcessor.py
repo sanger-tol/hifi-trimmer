@@ -211,15 +211,16 @@ class BlastProcessor:
         Keyword arguments:
         hits: pl.DataFrame of blast hits with matches
         end_length: length of window at either end of read which is examined for trimming
-        min_length: minimum length of a read after trimming to keep
         """
         hits_actions = hits.with_columns(
-            (
+            read_length_after_trimming=(
                 pl.col("read_length")
-                - ((pl.col("trim_l").any() + pl.col("trim_r").any()) * self.end_length)
+                - pl.col("trim_l").cast(pl.UInt32) * pl.col("qend")
+                - pl.col("trim_r").cast(pl.UInt32)
+                * (pl.col("read_length") - pl.col("qstart"))
             )
+            .get(pl.col("evalue").arg_min())
             .over("qseqid")
-            .alias("read_length_after_trimming"),
         ).with_columns(
             gen_action=(
                 pl.when(
@@ -282,19 +283,19 @@ class BlastProcessor:
             )
             .then(pl.lit(0))
             .when(pl.col("action") == "trim_r")
-            .then(pl.col("read_length") - self.end_length)
+            .then(pl.col("qstart") + 1)
             .otherwise(pl.lit(0)),
             end=pl.when(
                 (pl.col("action") == "discard") | (pl.col("action") == "trim_r")
             )
             .then(pl.col("read_length"))
             .when(pl.col("action") == "trim_l")
-            .then(pl.lit(self.end_length))
+            .then(pl.col("qend") + 1)
             .otherwise(pl.lit(0)),
             reason=pl.concat_str(pl.col("action"), pl.lit(":"), pl.col("sseqid")),
         ).sort("qseqid", "start")
 
-    def generate_hits(self) -> pl.LazyFrame:
+    def generate_hits(self) -> pl.DataFrame:
         return self.hits.select(
             [
                 "qseqid",
