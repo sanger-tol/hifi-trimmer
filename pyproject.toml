@@ -40,4 +40,4 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [dependency-groups]
-dev = ["pytest>=8.3.4"]
+dev = ["pytest>=9.1.1"]
