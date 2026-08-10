@@ -1,7 +1,13 @@
-# hifi_trimmer: changelog
+# hifi-trimmer: changelog
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [[5.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v5.0.0)] - [2026-08-10]
+
+### Added
+
+- The `trim` command can now trim FASTA and FASTQ files in addition to SAM/BAM/CRAM. This requires that the input file is now a path, and hifi-trimmer can only read from files now rather than stdin.
 
 ## [[4.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v4.0.0)] - [2026-05-06]
 

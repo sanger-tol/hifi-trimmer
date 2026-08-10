@@ -5,9 +5,9 @@ import bgzip
 import click
 from loguru import logger
 
-from hifi_trimmer.BamTrimmer import BamTrimmer
-from hifi_trimmer.BlastProcessor import BlastProcessor
-from hifi_trimmer.SummariseBlastResults import SummariseBlastResults
+from hifi_trimmer.blast_processor import BlastProcessor
+from hifi_trimmer.read_trimmer import ReadTrimmer
+from hifi_trimmer.summarise_blast_results import SummariseBlastResults
 
 
 @click.group()
@@ -123,9 +123,8 @@ def process_blast(
 
     ## Write BED file
     logger.info(f"Writing BED file: {prefix}.bed.gz")
-    with open(prefix + ".bed.gz", "wb") as f:
-        with bgzip.BGZipWriter(f, num_threads=threads) as out:
-            out.write(results.bed)
+    with open(prefix + ".bed.gz", "wb") as f, bgzip.BGZipWriter(f, num_threads=threads) as out:
+        out.write(results.bed)
 
     ## Write output hits if requested
     if hits_flag and results.hits is not None and not results.hits.is_empty():
@@ -142,7 +141,7 @@ def process_blast(
 
 
 @click.command("trim")
-@click.argument("bam", type=click.File(mode="rb"))
+@click.argument("input", type=click.Path(exists=True))
 @click.argument("bed", type=click.Path(exists=True))
 @click.option(
     "-o",
@@ -161,10 +160,10 @@ def process_blast(
     help="Number of threads to use for compression",
 )
 @click.option(
-    "--format",
+    "--out-format",
     "-f",
-    type=click.Choice(["sam", "bam", "cram"]),
-    default="bam",
+    type=click.Choice(["sam", "bam", "cram", "fasta", "fastq"]),
+    default="fasta",
     show_default=True,
     help="Output file format.",
 )
@@ -175,30 +174,64 @@ def process_blast(
     help="Comma-separated list of format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS).",
 )
 def trim(
-    bam: click.File,
+    input: str,
     bed: str,
     outfile: click.File,
     threads: int,
-    format: str,
+    out_format: str,
     format_opts: str,
 ) -> None:
     """
-    Filter the reads stored in a BAM file using the appropriate BED file produced
+    Filter the reads stored in an input file using the appropriate BED file produced
     by blastout_to_bed and write to a bgzipped fasta file.
 
     \b
-    BAM: BAM file in which to filter reads
+    INPUT: Input file in which to trim reads
     BED: BED file describing regions of the read set to exclude.
     """
-    logger.info(f"Filtering {bam.name} using BED file: {bed}")
+    split_name = Path(input).name.split(".")
+    if split_name[-1] == "gz":
+        check_ext = split_name[-2]
+    else:
+        check_ext = split_name[-1]
+
+    if check_ext == "sam":
+        input_format = "sam"
+    elif check_ext == "bam":
+        input_format = "bam"
+    elif check_ext == "cram":
+        input_format = "cram"
+    elif check_ext in ["fq", "fastq"]:
+        input_format = "fastq"
+    elif check_ext in ["fa", "fasta"]:
+        input_format = "fasta"
+    else:
+        raise ValueError(f"Unsupported input format: {check_ext}")
+
+    if outfile.name.endswith(".gz"):
+        gzip_output = True
+    else:
+        gzip_output = False
+
+    if input_format in ["fastq", "fasta"] and out_format in ["sam", "bam", "cram"]:
+        logger.error(f"Output format must be fasta when input format is {input_format}.")
+        sys.exit()
+
+    if input_format == "fasta" and out_format == "fastq":
+        logger.error(f"Output format must be fasta when input format is {input_format}.")
+        sys.exit()
+
+    logger.info(f"Filtering {Path(input).name} using BED file: {Path(bed).name}")
     logger.info(f"Writing the output to {outfile.name}.")
 
-    filterer = BamTrimmer(
+    filterer = ReadTrimmer(
         threads=threads,
-        format=format,
-        format_opts=format_opts.split(",") if format_opts else [],
+        in_format=input_format,
+        out_format=out_format,
+        out_bam_format_opts=format_opts.split(",") if format_opts else [],
+        gzip_fasta=gzip_output
     )
-    filterer.trim_bam_with_bed(bam, bed, outfile)
+    filterer.trim_input_with_bed(Path(input), bed, outfile)
 
 
 cli.add_command(process_blast)

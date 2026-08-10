@@ -124,8 +124,9 @@ class BlastProcessor:
         return blastout
 
     def _check_duplicate_adapter_matches(
-        self, blast: pl.LazyFrame, adapter_df: pl.DataFrame
-    ) -> list:
+        self, blast: pl.LazyFrame, adapter_df: pl.LazyFrame
+
+    ) -> None:
         """Check if any adapters in a BLAST dataframe match to more than one
         adapter sequence in the YAML file.
         """

@@ -4,7 +4,7 @@ import json
 import polars as pl
 import polars.selectors as cs
 
-from hifi_trimmer.BlastProcessor import BlastProcessor
+from hifi_trimmer.blast_processor import BlastProcessor
 
 
 class SummariseBlastResults:
@@ -118,7 +118,7 @@ class SummariseBlastResults:
             )
         )
 
-    def generate_summary(self, outfile) -> dict:
+    def generate_summary(self, outfile) -> None:
         """
         Takes the raw BLAST table, the BLAST table filtered for "valid" hits
         using criteria from the YAML, and the per-read "actions" table,
@@ -182,9 +182,9 @@ class SummariseBlastResults:
 
             summary["summary"].update(
                 {
-                    "total_bases_removed": all_actions_summary["bases_removed"].sum(),
-                    "total_reads_discarded": action_stats["discard"]["n_reads"].sum(),
-                    "total_reads_trimmed": action_stats["trim"]["n_reads"].sum(),
+                    "total_bases_removed": int(all_actions_summary["bases_removed"].sum()),
+                    "total_reads_discarded": int(action_stats["discard"]["n_reads"].sum()),
+                    "total_reads_trimmed": int(action_stats["trim"]["n_reads"].sum()),
                 }
             )
 

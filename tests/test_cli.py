@@ -36,6 +36,20 @@ def bam_to_records(path):
         ]
 
 
+def fastx_to_records(path):
+    """Extract (name, sequence, qualities) tuples from a FASTA/FASTQ file.
+    
+    Returns None for qualities in FASTA files.
+    Qualities are returned as a string for FASTQ files.
+    """
+    records = []
+    with pysam.FastxFile(str(path)) as f:
+        for r in f:
+            quality = r.quality if r.quality else None
+            records.append((r.name, r.sequence, quality))
+    return records
+
+
 def list_test_dirs():
     """
     List all the data dirs in the test data directory.
@@ -63,8 +77,8 @@ def md5checksum(fname):
 
 
 def clean_summary_for_comparison(summary_dict):
-    """Remove environment-specific paths from summary dict."""
-    for key in ["blast_file", "yaml_file"]:
+    """Remove environment-specific paths and version info from summary dict."""
+    for key in ["blast_file", "yaml_file", "hifi_trimmer"]:
         summary_dict["run_info"].pop(key, None)
     return summary_dict
 
@@ -121,5 +135,125 @@ def test_trim_fmt(tmp_path, testdata, fmt):
         )
         assert result.exit_code == 0
         assert bam_to_records(pathlib.Path(td) / outfile) == bam_to_records(
+            testdata[outfile]
+        )
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_trim_fasta_from_fasta(tmp_path, testdata):
+    """Test trimming FASTA input and writing FASTA output."""
+    runner = CliRunner()
+    outfile = "test.filtered.fa.gz"
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "trim",
+                "-f",
+                "fasta",
+                "-o",
+                outfile,
+                testdata["test.fasta.gz"],
+                testdata["test.bed.gz"],
+            ],
+        )
+        assert result.exit_code == 0
+        assert fastx_to_records(pathlib.Path(td) / outfile) == fastx_to_records(
+            testdata[outfile]
+        )
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_trim_fasta_from_fastq(tmp_path, testdata):
+    """Test trimming FASTQ input and writing FASTA output."""
+    runner = CliRunner()
+    outfile = "test.filtered.fa.gz"
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "trim",
+                "-f",
+                "fasta",
+                "-o",
+                outfile,
+                testdata["test.fastq.gz"],
+                testdata["test.bed.gz"],
+            ],
+        )
+        assert result.exit_code == 0
+        assert fastx_to_records(pathlib.Path(td) / outfile) == fastx_to_records(
+            testdata[outfile]
+        )
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_trim_fastq_from_fastq(tmp_path, testdata):
+    """Test trimming FASTQ input and writing FASTQ output."""
+    runner = CliRunner()
+    outfile = "test.filtered.fq.gz"
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "trim",
+                "-f",
+                "fastq",
+                "-o",
+                outfile,
+                testdata["test.fastq.gz"],
+                testdata["test.bed.gz"],
+            ],
+        )
+        assert result.exit_code == 0
+        assert fastx_to_records(pathlib.Path(td) / outfile) == fastx_to_records(
+            testdata[outfile]
+        )
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_trim_fasta_from_bam(tmp_path, testdata):
+    """Test trimming BAM input and writing FASTA output."""
+    runner = CliRunner()
+    outfile = "test.filtered.fa.gz"
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "trim",
+                "-f",
+                "fasta",
+                "-o",
+                outfile,
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
+            ],
+        )
+        assert result.exit_code == 0
+        assert fastx_to_records(pathlib.Path(td) / outfile) == fastx_to_records(
+            testdata[outfile]
+        )
+
+
+@pytest.mark.parametrize("testdata", list_test_dirs())
+def test_trim_fastq_from_bam(tmp_path, testdata):
+    """Test trimming BAM input and writing FASTQ output."""
+    runner = CliRunner()
+    outfile = "test.filtered.fq.gz"
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli,
+            [
+                "trim",
+                "-f",
+                "fastq",
+                "-o",
+                outfile,
+                testdata["test.bam"],
+                testdata["test.bed.gz"],
+            ],
+        )
+        assert result.exit_code == 0
+        assert fastx_to_records(pathlib.Path(td) / outfile) == fastx_to_records(
             testdata[outfile]
         )
