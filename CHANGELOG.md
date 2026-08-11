@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [[5.0.1](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v5.0.1)] - [2026-08-11]
+
+### Fixed
+
+- Update the help text in the commands to correctly reflect the changed inputs, outputs and behaviour of the trim command
+
 ## [[5.0.0](https://github.com/sanger-tol/hifi-trimmer/releases/tag/v5.0.0)] - [2026-08-10]
 
 ### Added
