@@ -149,7 +149,7 @@ def process_blast(
     default="-",
     required=False,
     type=click.File(mode="wb"),
-    help="The output file to write to. Defaults to stdout if not specified.",
+    help="The output file to write to. Defaults to stdout if not specified. If writing FASTX and the outfile name ends in .gz, the output will be bgzip compressed.",
 )
 @click.option(
     "-t",
@@ -171,7 +171,7 @@ def process_blast(
     "-h",
     "--format-opts",
     type=str,
-    help="Comma-separated list of format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS).",
+    help="Comma-separated list of format options to pass to htslib for writing the output (see https://www.htslib.org/doc/samtools.html#GLOBAL_COMMAND_OPTIONS) when writing BAM or CRAM outputs.",
 )
 def trim(
     input: str,
@@ -182,11 +182,12 @@ def trim(
     format_opts: str,
 ) -> None:
     """
-    Filter the reads stored in an input file using the appropriate BED file produced
-    by blastout_to_bed and write to a bgzipped fasta file.
+    Filter the reads stored in an input file (FASTX or *AM) using the appropriate
+    BED file produced by blastout_to_bed. Can write the trimmed reads as FASTX or
+    as SAM/BAM/CRAM as required.
 
     \b
-    INPUT: Input file in which to trim reads
+    INPUT: Input FASTX/SAM/BAM/CRAM file in which to trim reads
     BED: BED file describing regions of the read set to exclude.
     """
     split_name = Path(input).name.split(".")

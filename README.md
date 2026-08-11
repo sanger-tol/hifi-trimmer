@@ -11,7 +11,7 @@ BED file.
 The polars backend for BLAST file processing should respect the number of cores set
 by your scheduler; however, if this is not the case the number of threads used can be
 adjusted by setting the environment variable `POLARS_MAX_THREADS=int` before running the
-software. The number of threads used by the  bgzip backend for writing compressed
+software. The number of threads used by the bgzip backend for writing compressed
 BED files and the filtered FASTA files can be adjusted using the command-line option
 `--threads`.
 
@@ -89,25 +89,30 @@ Options:
 To filter a BAM file using the BED file:
 
 ```
-Usage: hifi-trimmer trim [OPTIONS] BAM BED
+Usage: hifi-trimmer trim [OPTIONS] INPUT BED
 
-  Filter the reads stored in a BAM file using the appropriate BED file
-  produced by blastout_to_bed and write to a bgzipped fasta file.
+  Filter the reads stored in an input file (FASTX or *AM) using the
+  appropriate BED file produced by blastout_to_bed. Can write the trimmed
+  reads as FASTX or as SAM/BAM/CRAM as required.
 
-  BAM: BAM file in which to filter reads
+  INPUT: Input FASTX/SAM/BAM/CRAM file in which to trim reads
   BED: BED file describing regions of the read set to exclude.
 
 Options:
-  -o, --outfile FILENAME       The output file to write to. Defaults to stdout
-                               if not specified.
-  -t, --threads INTEGER        Number of threads to use for compression
-                               [default: 1]
-  -f, --format [sam|bam|cram]  Output file format.  [default: bam]
-  -h, --format-opts TEXT       Comma-separated list of format options to pass
-                               to htslib for writing the output (see https://w
-                               ww.htslib.org/doc/samtools.html#GLOBAL_COMMAND_
-                               OPTIONS).
-  --help                       Show this message and exit.
+  -o, --outfile FILENAME          The output file to write to. Defaults to
+                                  stdout if not specified. If writing FASTX
+                                  and the outfile name ends in .gz, the output
+                                  will be bgzip compressed.
+  -t, --threads INTEGER           Number of threads to use for compression
+                                  [default: 1]
+  -f, --out-format [sam|bam|cram|fasta|fastq]
+                                  Output file format.  [default: fasta]
+  -h, --format-opts TEXT          Comma-separated list of format options to
+                                  pass to htslib for writing the output (see h
+                                  ttps://www.htslib.org/doc/samtools.html#GLOB
+                                  AL_COMMAND_OPTIONS) when writing BAM or CRAM
+                                  outputs.
+  --help                          Show this message and exit.
 ```
 
 ## Example
